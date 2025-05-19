@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "sonner"; // ←✨ Sonner import
+import { Toaster } from "sonner"; 
+import { ChatProvider } from "./ChatContext"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,8 +24,10 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <Toaster richColors position="top-center" /> {/* ←🔥 Toast goes here */}
+        <ChatProvider> {/* ←🫶 Wrap everything inside this */}
+          {children}
+          <Toaster richColors position="top-center" />
+        </ChatProvider>
       </body>
     </html>
   );
