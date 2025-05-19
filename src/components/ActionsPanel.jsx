@@ -46,7 +46,7 @@ export default function ActionsPanel() {
 
         <div className="flex justify-end">
           <Button
-            className="w-54 bg-[#25D366] text-white hover:bg-[#20bd5c] rounded-full"
+            className="w-44 bg-[#25D366] text-white hover:bg-[#20bd5c] rounded-full"
             onClick={handleSend}
           >
             Send via WhatsApp

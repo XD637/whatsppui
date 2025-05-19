@@ -16,7 +16,9 @@ export default function ChatWindow({ selectedChat }) {
       setLoading(true);
       try {
         const res = await fetch(
-          `http://192.168.0.169:4444/api/chat-messages?chatId=${encodeURIComponent(selectedChat.id)}`
+          `http://192.168.0.169:4444/api/chat-messages?chatId=${encodeURIComponent(
+            selectedChat.id
+          )}`
         );
         const data = await res.json();
         if (data.success) {
@@ -35,15 +37,15 @@ export default function ChatWindow({ selectedChat }) {
     fetchMessages();
   }, [selectedChat]);
 
+  // Timestamp is in ms, so no need to multiply by 1000
   const formatTime = (timestamp) => {
     if (!timestamp) return "";
-    const date = new Date(timestamp * 1000); // seconds to ms
+    const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   const handleSend = async () => {
     if (!messageText.trim()) return toast.error("Can't send empty message!");
-
     if (!selectedChat?.id) return toast.error("No chat selected!");
 
     try {
@@ -61,18 +63,19 @@ export default function ChatWindow({ selectedChat }) {
       const data = await res.json();
 
       if (data.success) {
-        // Update local messages state immediately with the new message
+        // Add the new message to local state immediately
         const newMessage = {
-          id: Date.now(), // temp id, better if API returns one
+          id: Date.now().toString(), // temp id
           body: messageText.trim(),
-          from: selectedChat.id, // assuming you sent it from this chat id
-          author: "me", // your client/user indicator
-          timestamp: Math.floor(Date.now() / 1000), // current time in seconds
+          from: selectedChat.id, // or your WhatsApp ID if available
+          author: "me",
+          timestamp: Date.now(),
+          sent: 1, // mark as sent by me
         };
 
         setMessages((prev) => [...prev, newMessage]);
         setMessageText("");
-        toast.success("Message sent via WhatsApp server!");
+        toast.success("Message sent!");
       } else {
         toast.error("Failed to send message");
       }
@@ -83,20 +86,20 @@ export default function ChatWindow({ selectedChat }) {
   };
 
   return (
-    <main className="w-[55%] p-4 bg-[#FFFFFF] flex flex-col justify-between border-r border-gray-300">
+    <main className="w-[55%] p-4 bg-white flex flex-col justify-between border-r border-gray-300">
       <div className="text-lg font-bold border-b pb-6 mb-6 text-[#075E54]">
         {selectedChat?.name || "Select a chat"}
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto pr-2">
+      <div className="flex-1 space-y-3 overflow-y-auto pr-2 flex flex-col">
         {loading ? (
           <div className="text-gray-500 text-sm">Loading messages...</div>
         ) : messages.length === 0 ? (
           <div className="text-gray-500 text-sm">No messages found</div>
         ) : (
           messages.map((msg) => {
-            const isSender =
-              msg.from === selectedChat.id || msg.author === "me";
+            // Use sent flag: 1 means message sent by me (right side), 0 means others (left)
+            const isSender = msg.sent === 1;
 
             return (
               <div
