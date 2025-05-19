@@ -12,6 +12,8 @@ export default function ChatWindow({ selectedChat }) {
   const [messageText, setMessageText] = useState("");
   const [mediaFile, setMediaFile] = useState(null);
   const fileInputRef = useRef();
+  const messagesEndRef = useRef(null);
+  const firstRenderRef = useRef(true);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -39,6 +41,22 @@ export default function ChatWindow({ selectedChat }) {
     };
 
     fetchMessages();
+  }, [selectedChat]);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      if (firstRenderRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: "auto" }); // jump to bottom
+        firstRenderRef.current = false;
+      } else {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth" }); // smooth scroll on new messages
+      }
+    }
+  }, [messages, selectedChat]);
+
+  useEffect(() => {
+    // Reset the flag when chat changes
+    firstRenderRef.current = true;
   }, [selectedChat]);
 
   const formatTime = (timestamp) => {
@@ -157,24 +175,27 @@ export default function ChatWindow({ selectedChat }) {
         ) : messages.length === 0 ? (
           <div className="text-gray-500 text-sm">No messages found</div>
         ) : (
-          messages.map((msg) => {
-            const isSender = msg.sent === 1;
-            return (
-              <div
-                key={msg.id}
-                className={`max-w-[70%] px-4 py-2 rounded-lg text-sm relative ${
-                  isSender
-                    ? "bg-[#DCF8C6] self-end ml-auto"
-                    : "bg-[#F0F0F0] self-start"
-                }`}
-              >
-                <div>{msg.body || <i>[Media message]</i>}</div>
-                <div className="text-[11px] text-gray-500 mt-1 text-right">
-                  {formatTime(msg.timestamp)}
+          <>
+            {messages.map((msg) => {
+              const isSender = msg.sent === 1;
+              return (
+                <div
+                  key={msg.id}
+                  className={`max-w-[70%] px-4 py-2 rounded-lg text-sm relative ${
+                    isSender
+                      ? "bg-[#DCF8C6] self-end ml-auto"
+                      : "bg-[#F0F0F0] self-start"
+                  }`}
+                >
+                  <div>{msg.body || <i>[Media message]</i>}</div>
+                  <div className="text-[11px] text-gray-500 mt-1 text-right">
+                    {formatTime(msg.timestamp)}
+                  </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </>
         )}
       </div>
 
