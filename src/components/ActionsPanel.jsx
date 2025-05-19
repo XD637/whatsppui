@@ -5,17 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useChat } from "../app/ChatContext"; // Adjust path as needed
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
 
 export default function ActionsPanel() {
-  const { selectedChat } = useChat();
-
   const [excelFile, setExcelFile] = useState(null);
   const [fieldName, setFieldName] = useState("");
   const [extractedData, setExtractedData] = useState([]);
-  const [mediaFile, setMediaFile] = useState(null);
   const [message, setMessage] = useState("");
-  const [sendMode, setSendMode] = useState(""); // This is our realtime tag state
+  const [sendMode, setSendMode] = useState("");
+  const [mediaFile, setMediaFile] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleExcelChange = (e) => {
     setExcelFile(e.target.files[0]);
@@ -63,29 +62,24 @@ export default function ActionsPanel() {
     }
   };
 
-  const handleSend = async () => {
-    if (!message || !mediaFile) {
-      toast.error("Please enter a message and select a media file!");
-      setSendMode("");
+  // Bulk send to extracted numbers (text or media)
+  const handleBulkSend = async () => {
+    if (extractedData.length === 0) {
+      toast.error("No extracted numbers to send!");
+      return;
+    }
+    if (!message && !mediaFile) {
+      toast.error("Please enter a message or select a media file!");
       return;
     }
 
-    setSendMode(
-      extractedData.length > 0
-        ? "Using bulk send mode"
-        : "Sending to selected chat group"
-    );
+    setSendMode("Using bulk send mode");
+    setLoading(true);
 
     try {
       const formData = new FormData();
-      formData.append("media", mediaFile);
-      // Bulk: send array, Single: send string
-      formData.append(
-        "chatId",
-        extractedData.length > 0
-          ? JSON.stringify(extractedData)
-          : selectedChat.id
-      );
+      if (mediaFile) formData.append("media", mediaFile);
+      formData.append("chatId", JSON.stringify(extractedData));
       formData.append("caption", message);
 
       const uploadRes = await fetch("http://192.168.0.169:4444/upload-media", {
@@ -95,22 +89,19 @@ export default function ActionsPanel() {
       const uploadResult = await uploadRes.json();
 
       if (!uploadResult.success) {
-        toast.error("Media upload failed");
+        toast.error("Bulk send failed");
         setSendMode("");
+        setLoading(false);
         return;
       }
 
-      // Show results for bulk or single
-      if (uploadResult.results && Array.isArray(uploadResult.results)) {
-        const successCount = uploadResult.results.filter(r => r.success).length;
-        toast.success(`Media sent to ${successCount} chat(s)!`);
-      } else {
-        toast.success("Media sent successfully!");
-      }
+      const successCount = uploadResult.results?.filter(r => r.success).length || 0;
+      toast.success(`Bulk sent to ${successCount} chat(s)!`);
     } catch (err) {
-      toast.error("Media upload error");
+      toast.error("Bulk send error");
     } finally {
       setSendMode("");
+      setLoading(false);
     }
   };
 
@@ -158,9 +149,9 @@ export default function ActionsPanel() {
           )}
         </div>
 
-        {/* Media Upload */}
+        {/* Media Upload for Bulk */}
         <div>
-          <label className="block text-sm font-medium mb-1">Upload Media (Max 16MB)</label>
+          <label className="block text-sm font-medium mb-1">Upload Media (Max 16MB, optional)</label>
           <Input
             type="file"
             className="bg-white"
@@ -186,21 +177,25 @@ export default function ActionsPanel() {
           />
         </div>
 
-        {/* Send Button */}
+        {/* Bulk Send Button */}
         <div className="flex flex-col items-end space-y-1">
           <Button
-            className="w-44 bg-[#25D366] text-white hover:bg-[#20bd5c] rounded-full"
-            onClick={handleSend}
+            className="w-44 bg-[#25D366] text-white hover:bg-[#20bd5c] rounded-full flex items-center justify-center gap-2"
+            onClick={handleBulkSend}
+            disabled={loading}
           >
-            Send via WhatsApp
+            {loading && (
+              <AiOutlineLoading3Quarters className="animate-spin text-xl" />
+            )}
+            <span>
+              {loading ? "Sending..." : "Send Bulk via WhatsApp"}
+            </span>
           </Button>
-          {/* Realtime send mode tag */}
           {sendMode && (
             <span className="text-xs text-gray-700 italic select-none">{sendMode}</span>
           )}
         </div>
       </div>
     </aside>
-
   );
 }

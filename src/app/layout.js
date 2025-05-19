@@ -26,7 +26,7 @@ export default function RootLayout({ children }) {
       >
         <ChatProvider> {/* ←🫶 Wrap everything inside this */}
           {children}
-          <Toaster richColors position="top-center" />
+          <Toaster richColors position="bottom-right" />
         </ChatProvider>
       </body>
     </html>
