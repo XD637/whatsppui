@@ -1,10 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { FiRefreshCw } from "react-icons/fi";
+import { FiRefreshCw, FiSearch } from "react-icons/fi";
 
 export default function ChatSidebar({ onSelectChat }) {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
 
   const fetchChats = async () => {
     try {
@@ -25,10 +26,21 @@ export default function ChatSidebar({ onSelectChat }) {
     fetchChats();
   }, []);
 
+  // Filter chats by search (case-insensitive, chat name only, matches any word)
+  const filteredChats = chats.filter(chat => {
+    const name = (chat.name || "").toLowerCase().trim();
+    const searchTerm = search.toLowerCase().trim();
+    if (!searchTerm) return true;
+    // Split search into words and check if all are present in the name
+    return searchTerm
+      .split(/\s+/)
+      .every(word => name.includes(word));
+  });
+
   return (
     <aside className="w-[20%] border-r border-gray-300 bg-white flex flex-col">
       {/* Sidebar Header */}
-      <div className="p-4 border-b border-gray-300 mb-6 flex justify-between items-center">
+      <div className="p-4 border-b border-gray-300 mb-4 flex justify-between items-center">
         <h2 className="text-xl font-bold text-[#075E54]">Chats</h2>
         <button
           onClick={fetchChats}
@@ -41,10 +53,25 @@ export default function ChatSidebar({ onSelectChat }) {
         </button>
       </div>
 
+      {/* Search Bar */}
+      <div className="px-4 mb-4">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <FiSearch size={18} />
+          </span>
+          <input
+            type="text"
+            className="w-full pl-10 pr-3 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#25D366] bg-gray-100 text-sm"
+            placeholder="Search chats..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto">
-        {chats.map((chat) => {
-          // Show caption for media if present, else show type, else show body
+        {filteredChats.map((chat) => {
           let previewMsg = null;
           if (chat.lastMessage) {
             if (
@@ -52,7 +79,7 @@ export default function ChatSidebar({ onSelectChat }) {
                 chat.lastMessage.type === "video" ||
                 chat.lastMessage.type === "document" ||
                 chat.lastMessage.type === "audio") &&
-              chat.lastMessage.body // body is caption in your API
+              chat.lastMessage.body
             ) {
               previewMsg = chat.lastMessage.body;
             } else if (
@@ -68,6 +95,10 @@ export default function ChatSidebar({ onSelectChat }) {
           }
 
           const previewTime = chat.lastMessage?.timestamp || null;
+          const isSentByMe =
+            typeof chat.lastMessage?.from === "string" &&
+            (chat.lastMessage.from.startsWith("917399750001") ||
+              chat.lastMessage.from.startsWith("917708238586"));
 
           return (
             <div
@@ -90,11 +121,11 @@ export default function ChatSidebar({ onSelectChat }) {
                 <div className="font-semibold text-gray-900 truncate">
                   {chat.name || chat.id}
                 </div>
-                <div className="text-xs text-[#075E54] font-semibold truncate">
+                <div className="text-xs truncate text-[#075E54] font-semibold">
                   {previewMsg ? (
                     previewMsg
                   ) : (
-                    <i className="text-[#075E54] font-semibold">No messages yet</i>
+                    <i className="text-gray-400">No messages yet</i>
                   )}
                 </div>
                 {previewTime && (
@@ -111,7 +142,7 @@ export default function ChatSidebar({ onSelectChat }) {
         })}
 
         {/* If no chats are found */}
-        {chats.length === 0 && (
+        {filteredChats.length === 0 && (
           <div className="p-4 text-sm text-gray-500 italic text-center">
             No chats available
           </div>
