@@ -44,18 +44,28 @@ export default function ChatSidebar({ onSelectChat }) {
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto">
         {chats.map((chat) => {
-          const previewMsg =
-            chat.lastMessage?.type === "chat"
-              ? chat.lastMessage.body
-              : chat.lastMessage?.type === "image"
-              ? "[Image]"
-              : chat.lastMessage?.type === "video"
-              ? "[Video]"
-              : chat.lastMessage?.type === "audio"
-              ? "[Audio]"
-              : chat.lastMessage?.type === "document"
-              ? "[Document]"
-              : chat.lastMessage?.body || null;
+          // Show caption for media if present, else show type, else show body
+          let previewMsg = null;
+          if (chat.lastMessage) {
+            if (
+              (chat.lastMessage.type === "image" ||
+                chat.lastMessage.type === "video" ||
+                chat.lastMessage.type === "document" ||
+                chat.lastMessage.type === "audio") &&
+              chat.lastMessage.body // body is caption in your API
+            ) {
+              previewMsg = chat.lastMessage.body;
+            } else if (
+              chat.lastMessage.type === "image" ||
+              chat.lastMessage.type === "video" ||
+              chat.lastMessage.type === "audio" ||
+              chat.lastMessage.type === "document"
+            ) {
+              previewMsg = `[${chat.lastMessage.type.charAt(0).toUpperCase() + chat.lastMessage.type.slice(1)}]`;
+            } else {
+              previewMsg = chat.lastMessage.body;
+            }
+          }
 
           const previewTime = chat.lastMessage?.timestamp || null;
 
@@ -80,11 +90,11 @@ export default function ChatSidebar({ onSelectChat }) {
                 <div className="font-semibold text-gray-900 truncate">
                   {chat.name || chat.id}
                 </div>
-                <div className="text-xs text-gray-500 truncate">
+                <div className="text-xs text-[#075E54] font-semibold truncate">
                   {previewMsg ? (
                     previewMsg
                   ) : (
-                    <i className="text-gray-400">No messages yet</i>
+                    <i className="text-[#075E54] font-semibold">No messages yet</i>
                   )}
                 </div>
                 {previewTime && (
