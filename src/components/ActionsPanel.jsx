@@ -155,7 +155,7 @@ export default function ActionsPanel() {
 
       // Calculate summary
       const total = uploadResult.results.length;
-      const successCount = uploadResult.results.filter(r => r.success).length;
+      const successCount = uploadResult.results.filter((r) => r.success).length;
       const failCount = total - successCount;
 
       setSummary({
@@ -193,11 +193,15 @@ export default function ActionsPanel() {
           />
           <div className="mt-2 flex gap-2">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-1">Field Name</label>
+              <label className="block text-sm font-medium mb-1">
+                Field Name
+              </label>
               <div className="flex gap-2 items-center">
                 <Select
-                  value={FIELD_OPTIONS.includes(fieldName) ? fieldName : "Custom"}
-                  onValueChange={val => {
+                  value={
+                    FIELD_OPTIONS.includes(fieldName) ? fieldName : "Custom"
+                  }
+                  onValueChange={(val) => {
                     if (val === "Custom") {
                       setFieldName(customField);
                     } else {
@@ -210,19 +214,20 @@ export default function ActionsPanel() {
                     <SelectValue placeholder="Select field" />
                   </SelectTrigger>
                   <SelectContent>
-                    {FIELD_OPTIONS.map(opt => (
+                    {FIELD_OPTIONS.map((opt) => (
                       <SelectItem key={opt} value={opt}>
                         {opt}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {fieldName === "Custom" || !FIELD_OPTIONS.includes(fieldName) ? (
+                {fieldName === "Custom" ||
+                !FIELD_OPTIONS.includes(fieldName) ? (
                   <Input
                     placeholder="Type field name"
                     className="bg-white flex-1 border border-gray-300"
                     value={customField}
-                    onChange={e => {
+                    onChange={(e) => {
                       setCustomField(e.target.value);
                       setFieldName(e.target.value);
                     }}
@@ -242,7 +247,7 @@ export default function ActionsPanel() {
                 min={1}
                 className="bg-white"
                 value={limit}
-                onChange={e => setLimit(e.target.value)}
+                onChange={(e) => setLimit(e.target.value)}
               />
             </div>
             <div className="flex-1">
@@ -252,7 +257,7 @@ export default function ActionsPanel() {
                 min={0}
                 className="bg-white"
                 value={offset}
-                onChange={e => setOffset(e.target.value)}
+                onChange={(e) => setOffset(e.target.value)}
               />
             </div>
           </div>
@@ -288,7 +293,9 @@ export default function ActionsPanel() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Upload Media (Max 16MB, optional)</label>
+          <label className="block text-sm font-medium mb-1">
+            Upload Media (Max 16MB, optional)
+          </label>
           <Input
             type="file"
             className="bg-white"
@@ -322,9 +329,7 @@ export default function ActionsPanel() {
             {loading && (
               <AiOutlineLoading3Quarters className="animate-spin text-xl" />
             )}
-            <span>
-              {loading ? "Sending..." : "Send Bulk via WhatsApp"}
-            </span>
+            <span>{loading ? "Sending..." : "Send Bulk via WhatsApp"}</span>
           </Button>
           {/* Progress Bar */}
           {loading && (
@@ -335,7 +340,9 @@ export default function ActionsPanel() {
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
-              <div className="text-xs text-gray-600 mt-1 text-right">{progress}%</div>
+              <div className="text-xs text-gray-600 mt-1 text-right">
+                {progress}%
+              </div>
             </div>
           )}
           {/* Improved Summary */}
@@ -367,13 +374,14 @@ export default function ActionsPanel() {
                       </DialogDescription>
                     </DialogHeader>
                     <div className="flex gap-4 mb-4">
-                      <span className="bg-gray-100 px-2 py-1 rounded text-xs">
+                      <span className="bg-neutral-100 text-neutral-700 px-2 py-1 rounded text-xs border border-neutral-200">
                         Total: <b>{summary.total}</b>
                       </span>
-                      <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs flex items-center gap-1">
-                        <CheckCircle size={14} /> Success: <b>{summary.successCount}</b>
+                      <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs border border-emerald-100 flex items-center gap-1">
+                        <CheckCircle size={14} /> Success:{" "}
+                        <b>{summary.successCount}</b>
                       </span>
-                      <span className="bg-red-100 text-red-600 px-2 py-1 rounded text-xs flex items-center gap-1">
+                      <span className="bg-rose-50 text-rose-700 px-2 py-1 rounded text-xs border border-rose-100 flex items-center gap-1">
                         <XCircle size={14} /> Failed: <b>{summary.failCount}</b>
                       </span>
                     </div>
@@ -392,9 +400,15 @@ export default function ActionsPanel() {
                             <tr key={idx} className="border-b last:border-0">
                               <td className="py-1 px-2">{idx + 1}</td>
                               <td className="py-1 px-2 font-mono">
-                                {res.chatId
-                                  ? res.chatId.replace(/^91/, "").replace(/@c\.us$/, "")
-                                  : <span className="text-gray-400 italic">No number</span>}
+                                {res.chatId ? (
+                                  res.chatId
+                                    .replace(/^91/, "")
+                                    .replace(/@c\.us$/, "")
+                                ) : (
+                                  <span className="text-gray-400 italic">
+                                    No number
+                                  </span>
+                                )}
                               </td>
                               <td className="py-1 px-2">
                                 {res.success ? (
@@ -407,7 +421,9 @@ export default function ActionsPanel() {
                                   </span>
                                 )}
                               </td>
-                              <td className="py-1 px-2 text-red-600">{res.error || "-"}</td>
+                              <td className="py-1 px-2 text-red-600">
+                                {res.error || "-"}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -421,35 +437,47 @@ export default function ActionsPanel() {
                   </DialogContent>
                 </Dialog>
               </div>
-              <div className="flex gap-4 mb-2">
-                <span className="bg-gray-100 px-2 py-1 rounded text-xs">
+              <div className="flex gap-4 mb-4">
+                <span className="bg-neutral-100 text-neutral-700 px-2 py-1 rounded text-xs border border-neutral-200">
                   Total: <b>{summary.total}</b>
                 </span>
-                <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs flex items-center gap-1">
-                  <CheckCircle size={14} /> Success: <b>{summary.successCount}</b>
+                <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs border border-emerald-100 flex items-center gap-1">
+                  <CheckCircle size={14} /> Success:{" "}
+                  <b>{summary.successCount}</b>
                 </span>
-                <span className="bg-red-100 text-red-600 px-2 py-1 rounded text-xs flex items-center gap-1">
+                <span className="bg-rose-50 text-rose-700 px-2 py-1 rounded text-xs border border-rose-100 flex items-center gap-1">
                   <XCircle size={14} /> Failed: <b>{summary.failCount}</b>
                 </span>
               </div>
-              {summary.results.filter(r => !r.success).length > 0 && (
+              {summary.results.filter((r) => !r.success).length > 0 && (
                 <details className="mt-1">
-                  <summary className="cursor-pointer text-xs text-gray-500">Show failed numbers</summary>
+                  <summary className="cursor-pointer text-xs text-gray-500">
+                    Show failed numbers
+                  </summary>
                   <ul className="text-xs text-red-600 mt-1 pl-2 list-disc">
-                    {summary.results.filter(r => !r.success).map((f, i) => (
-                      <li key={i}>
-                        <span className="font-mono">
-                          {f.chatId ? f.chatId.replace(/^91/, "").replace(/@c\.us$/, "") : "No number"}
-                        </span> - {f.error}
-                      </li>
-                    ))}
+                    {summary.results
+                      .filter((r) => !r.success)
+                      .map((f, i) => (
+                        <li key={i}>
+                          <span className="font-mono">
+                            {f.chatId
+                              ? f.chatId
+                                  .replace(/^91/, "")
+                                  .replace(/@c\.us$/, "")
+                              : "No number"}
+                          </span>{" "}
+                          - {f.error}
+                        </li>
+                      ))}
                   </ul>
                 </details>
               )}
             </div>
           )}
           {sendMode && (
-            <span className="text-xs text-gray-700 italic select-none">{sendMode}</span>
+            <span className="text-xs text-gray-700 italic select-none">
+              {sendMode}
+            </span>
           )}
         </div>
       </div>

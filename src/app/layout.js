@@ -26,7 +26,13 @@ export default function RootLayout({ children }) {
       >
         <ChatProvider> {/* ←🫶 Wrap everything inside this */}
           {children}
-          <Toaster richColors position="bottom-right" />
+          <Toaster
+            richColors
+            position="bottom-right"
+            toastOptions={{
+              className: "text-xs px-2 py-1 rounded"
+            }}
+          />
         </ChatProvider>
       </body>
     </html>

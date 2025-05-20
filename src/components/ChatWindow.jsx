@@ -173,7 +173,7 @@ export default function ChatWindow({ selectedChat }) {
             <AiOutlineLoading3Quarters className="animate-spin text-3xl text-[#075E54]" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-gray-500 text-sm">No messages found</div>
+          <div className="flex text-gray-500 text-sm justify-center">No messages found</div>
         ) : (
           <>
             {messages.map((msg) => {
@@ -187,9 +187,23 @@ export default function ChatWindow({ selectedChat }) {
                       : "bg-[#F0F0F0] self-start"
                   }`}
                 >
+                  <div className="font-semibold text-xs mb-1 text-gray-700">
+                    {isSender
+                      ? "You"
+                      : msg.author && !/^(\d{10,})@c\.us$/.test(msg.author) && !msg.author.endsWith("@g.us")
+                        ? msg.author
+                        : msg.from && msg.from.endsWith("@g.us")
+                          ? selectedChat?.name || "Group"
+                          : msg.from
+                            ? msg.from.replace(/^91/, "").replace(/@c\.us$/, "")
+                            : "Other"}
+                  </div>
                   <div>{msg.body || <i>[Media message]</i>}</div>
                   <div className="text-[11px] text-gray-500 mt-1 text-right">
                     {formatTime(msg.timestamp)}
+                    {msg.failed && (
+                      <span className="text-red-500 text-xs ml-2">Failed</span>
+                    )}
                   </div>
                 </div>
               );
