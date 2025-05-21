@@ -129,20 +129,26 @@ export default function ChatWindow({ selectedChat }) {
         }
         data = await res.json();
         if (data.success) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              body: messageText.trim() || "[Media message]",
-              from: selectedChat.id,
-              author: "me",
-              timestamp: Date.now(),
-              sent: 1,
-              replyTo: replyTo.id,
-              replyToBody: replyTo.body,
-              hasMedia: !!mediaFile,
-            },
-          ]);
+          const newMessage = {
+            id: Date.now().toString(),
+            body: messageText.trim() || "[Media message]",
+            from: selectedChat.id,
+            author: "me",
+            timestamp: Date.now(),
+            sent: 1,
+            // Add the reply object in the same format as your backend
+            reply: replyTo
+              ? {
+                  toMessageId: replyTo.id,
+                  toBody: replyTo.body,
+                  toAuthor: replyTo.author,
+                  toFromMe: replyTo.fromMe,
+                  toType: replyTo.type,
+                }
+              : null,
+            hasMedia: !!mediaFile,
+          };
+          setMessages((prev) => [...prev, newMessage]);
           setMessageText("");
           setMediaFile(null);
           setReplyTo(null);
