@@ -3,17 +3,25 @@ import React, { useEffect, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Plus } from "lucide-react"; // If you have lucide-react or use any plus icon
-import { AiOutlineLoading3Quarters } from "react-icons/ai"; // Add at the top
+import { Plus } from "lucide-react";
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
+import { X } from "lucide-react";
+import { Reply as ReplyIcon } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function ChatWindow({ selectedChat }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [mediaFile, setMediaFile] = useState(null);
+  const [replyTo, setReplyTo] = useState(null);
+  const [highlightedMsgId, setHighlightedMsgId] = useState(null);
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, msg: null });
   const fileInputRef = useRef();
   const messagesEndRef = useRef(null);
   const firstRenderRef = useRef(true);
+  const [groupInfo, setGroupInfo] = useState(null);
+  const [showAllParticipants, setShowAllParticipants] = useState(false);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -27,11 +35,7 @@ export default function ChatWindow({ selectedChat }) {
           )}`
         );
         const data = await res.json();
-        if (data.success) {
-          setMessages(data.messages);
-        } else {
-          setMessages([]);
-        }
+        setMessages(data.success ? data.messages : []);
       } catch (err) {
         console.error("Failed to fetch messages", err);
         setMessages([]);
@@ -45,18 +49,26 @@ export default function ChatWindow({ selectedChat }) {
 
   useEffect(() => {
     if (messagesEndRef.current) {
-      if (firstRenderRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: "auto" }); // jump to bottom
-        firstRenderRef.current = false;
-      } else {
-        messagesEndRef.current.scrollIntoView({ behavior: "smooth" }); // smooth scroll on new messages
-      }
+      const behavior = firstRenderRef.current ? "auto" : "smooth";
+      messagesEndRef.current.scrollIntoView({ behavior });
+      firstRenderRef.current = false;
     }
   }, [messages, selectedChat]);
 
   useEffect(() => {
-    // Reset the flag when chat changes
     firstRenderRef.current = true;
+  }, [selectedChat]);
+
+  useEffect(() => {
+    setGroupInfo(null);
+    if (selectedChat?.id && selectedChat?.id.endsWith("@g.us")) {
+      fetch(`http://192.168.0.169:4444/api/group-info?groupId=${encodeURIComponent(selectedChat.id)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) setGroupInfo(data.group);
+        })
+        .catch(() => setGroupInfo(null));
+    }
   }, [selectedChat]);
 
   const formatTime = (timestamp) => {
@@ -85,60 +97,82 @@ export default function ChatWindow({ selectedChat }) {
     }
     if (!selectedChat?.id) return toast.error("No chat selected!");
 
-    // If media is selected, use /upload-media
-    if (mediaFile) {
+    // If replying to a message
+    if (replyTo) {
+      if (!replyTo.id || (!messageText.trim() && !mediaFile)) {
+        toast.error("Reply message and text or media are required!");
+        return;
+      }
       try {
-        const formData = new FormData();
-        formData.append("media", mediaFile);
-        formData.append("chatId", selectedChat.id);
-        formData.append("caption", messageText.trim());
+        let res, data;
+        if (mediaFile) {
+          // Send as multipart/form-data
+          const formData = new FormData();
+          formData.append("messageId", replyTo.id);
+          if (messageText.trim()) formData.append("replyText", messageText.trim());
+          formData.append("media", mediaFile);
 
-        const res = await fetch("http://192.168.0.169:4444/upload-media", {
-          method: "POST",
-          body: formData,
-        });
-
-        const data = await res.json();
-
+          res = await fetch("http://192.168.0.169:4444/api/reply-message", {
+            method: "POST",
+            body: formData,
+          });
+        } else {
+          // Send as JSON
+          res = await fetch("http://192.168.0.169:4444/api/reply-message", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messageId: replyTo.id,
+              replyText: messageText.trim(),
+            }),
+          });
+        }
+        data = await res.json();
         if (data.success) {
-          // Add the new message to local state immediately
-          const newMessage = {
-            id: Date.now().toString(),
-            body: messageText.trim() || "[Media message]",
-            from: selectedChat.id,
-            author: "me",
-            timestamp: Date.now(),
-            sent: 1,
-          };
-          setMessages((prev) => [...prev, newMessage]);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              body: messageText.trim() || "[Media message]",
+              from: selectedChat.id,
+              author: "me",
+              timestamp: Date.now(),
+              sent: 1,
+              replyTo: replyTo.id,
+              replyToBody: replyTo.body,
+              hasMedia: !!mediaFile,
+            },
+          ]);
           setMessageText("");
           setMediaFile(null);
-          toast.success("Media sent!");
+          setReplyTo(null);
+          toast.success("Reply sent!");
         } else {
-          toast.error("Failed to send media");
+          toast.error(data.error || "Failed to send reply");
         }
       } catch (error) {
-        console.error("Send media error", error);
-        toast.error("Error sending media");
+        console.error("Send reply error", error);
+        toast.error("Error sending reply");
       }
       return;
     }
 
-    // If no media, use text API as before
     try {
       const payload = {
         chatId: selectedChat.id,
         messageText: messageText.trim(),
       };
 
-      const res = await fetch("http://192.168.0.169:4444/api/send-text-message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        "http://192.168.0.169:4444/api/send-text-message",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const data = await res.json();
-
       if (data.success) {
         const newMessage = {
           id: Date.now().toString(),
@@ -148,17 +182,32 @@ export default function ChatWindow({ selectedChat }) {
           timestamp: Date.now(),
           sent: 1,
         };
-
         setMessages((prev) => [...prev, newMessage]);
         setMessageText("");
+        setReplyTo(null);
         toast.success("Message sent!");
-      } else {
-        toast.error("Failed to send message");
-      }
+      } else toast.error("Failed to send message");
     } catch (error) {
       console.error("Send message error", error);
       toast.error("Error sending message");
     }
+  };
+
+  const handleHighlight = (msgId) => {
+    setHighlightedMsgId(msgId);
+    setTimeout(() => setHighlightedMsgId(null), 1500);
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const handleContextMenu = (e, msg) => {
+    e.preventDefault();
+    setContextMenu({ visible: true, x: e.clientX, y: e.clientY, msg });
+  };
+
+  const handleReplyFromMenu = () => {
+    setReplyTo(contextMenu.msg);
+    setContextMenu({ ...contextMenu, visible: false });
   };
 
   return (
@@ -167,39 +216,155 @@ export default function ChatWindow({ selectedChat }) {
         {selectedChat?.name || "Select a chat"}
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto pr-2 flex flex-col">
+      {groupInfo && (
+        <div className="mb-4 p-4 rounded-lg bg-[#f7fafc] border border-[#e2e8f0] shadow-sm">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-lg font-semibold text-[#075E54]">{groupInfo.name}</span>
+            <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">Group</span>
+          </div>
+          {groupInfo.description && (
+            <div className="text-xs text-gray-600 mb-2">
+              <span className="font-medium">Description:</span> {groupInfo.description}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2 text-xs text-gray-700">
+            <span>
+              <span className="font-medium">Owner:</span>{" "}
+              {typeof groupInfo.owner === "object"
+                ? groupInfo.owner._serialized
+                : groupInfo.owner}
+            </span>
+            {groupInfo.createdAt && (
+              <span>
+                <span className="font-medium">Created:</span>{" "}
+                {new Date(groupInfo.createdAt).toLocaleString()}
+              </span>
+            )}
+            <span>
+              <span className="font-medium">Participants:</span>{" "}
+              {groupInfo.participants?.length}
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {groupInfo.participants?.slice(0, 8).map((p) => (
+              <span
+                key={typeof p.id === "object" ? p.id._serialized : p.id}
+                className={`px-2 py-1 rounded bg-gray-100 border text-xs ${
+                  p.isAdmin || p.isSuperAdmin
+                    ? "border-green-400 text-green-700 font-semibold"
+                    : "border-gray-200"
+                }`}
+                title={typeof p.id === "object" ? p.id._serialized : p.id}
+              >
+                {(typeof p.id === "object" ? p.id._serialized : p.id)
+                  .replace(/^91/, "")
+                  .replace(/@c\.us$/, "")}
+                {p.isSuperAdmin ? " 👑" : p.isAdmin ? " ⭐" : ""}
+              </span>
+            ))}
+            {groupInfo.participants?.length > 8 && (
+              <button
+                className="text-xs text-blue-600 underline"
+                onClick={() => setShowAllParticipants(true)}
+                type="button"
+              >
+                View all ({groupInfo.participants.length})
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 space-y-8 overflow-y-auto pr-2 flex flex-col ">
         {loading ? (
           <div className="flex justify-center items-center h-full">
             <AiOutlineLoading3Quarters className="animate-spin text-3xl text-[#075E54]" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex text-gray-500 text-sm justify-center">No messages found</div>
+          <div className="flex text-gray-500 text-sm justify-center">
+            No messages found
+          </div>
         ) : (
           <>
             {messages.map((msg) => {
               const isSender = msg.sent === 1;
+              // Use the reply object from API if present
+              const repliedMsg = msg.reply;
+
               return (
                 <div
                   key={msg.id}
-                  className={`max-w-[70%] px-4 py-2 rounded-lg text-sm relative ${
-                    isSender
-                      ? "bg-[#DCF8C6] self-end ml-auto"
-                      : "bg-[#F0F0F0] self-start"
-                  }`}
+                  id={`msg-${msg.id}`}
+                  className={`group relative max-w-[70%] px-4 py-2 rounded-lg text-sm
+                    ${isSender ? "bg-[#DCF8C6] self-end ml-auto" : "bg-[#F0F0F0] self-start"}
+                    ${highlightedMsgId === msg.id ? "ring-1 ring-green-400" : ""}
+                    my-3 mx-6
+                  `}
+                  onContextMenu={(e) => handleContextMenu(e, msg)}
                 >
+                  {/* Reply icon top right */}
+                  <button
+                    onClick={() => setReplyTo(msg)}
+                    className="absolute -top-3 right-0 opacity-0 group-hover:opacity-100 transition bg-white rounded-full shadow p-1"
+                    title="Reply"
+                    style={{ zIndex: 2 }}
+                  >
+                    <ReplyIcon className="w-4 h-4 text-green-600" />
+                  </button>
                   <div className="font-semibold text-xs mb-1 text-gray-700">
                     {isSender
                       ? "You"
-                      : msg.author && !/^(\d{10,})@c\.us$/.test(msg.author) && !msg.author.endsWith("@g.us")
-                        ? msg.author
-                        : msg.from && msg.from.endsWith("@g.us")
-                          ? selectedChat?.name || "Group"
-                          : msg.from
-                            ? msg.from.replace(/^91/, "").replace(/@c\.us$/, "")
-                            : "Other"}
+                      : msg.author &&
+                        !/^(\d{10,})@c\.us$/.test(msg.author) &&
+                        !msg.author.endsWith("@g.us")
+                      ? msg.author
+                      : msg.from && msg.from.endsWith("@g.us")
+                      ? selectedChat?.name || "Group"
+                      : msg.from
+                      ? msg.from.replace(/^91/, "").replace(/@c\.us$/, "")
+                      : "Other"}
                   </div>
+                  {/* Replied message UI */}
+                  {repliedMsg && (
+                    <div
+                      className={`relative border-l-4 pl-3 mb-2 text-xs bg-green-50 rounded-md cursor-pointer transition
+                        ${highlightedMsgId === repliedMsg.toMessageId ? "border-blue-500 bg-blue-100" : "border-green-400"}
+                      `}
+                      onClick={() => handleHighlight(repliedMsg.toMessageId)}
+                      title="Go to replied message"
+                      style={{
+                        minHeight: 32,
+                        marginBottom: 6,
+                        paddingTop: 6,
+                        paddingBottom: 6,
+                        boxShadow: "0 1px 2px rgba(60,180,80,0.04)",
+                      }}
+                    >
+                      <div className="flex items-center gap-1 mb-1">
+                        <ReplyIcon className="w-3 h-3 text-green-600" />
+                        <span className="font-semibold text-green-700 truncate max-w-[100px]">
+                          {repliedMsg.toFromMe ? "You" : repliedMsg.toAuthor || "Other"}
+                        </span>
+                        {repliedMsg.toType && (
+                          <span className="ml-1 mr-2 text-gray-400">
+                            [{repliedMsg.toType}]
+                          </span>
+                        )}
+                      </div>
+                      <div className="truncate text-gray-700 font-medium max-w-[180px]">
+                        {repliedMsg.toBody
+                          ? repliedMsg.toBody.length > 60
+                            ? repliedMsg.toBody.slice(0, 60) + "…"
+                            : repliedMsg.toBody
+                          : <i className="text-gray-400">[Media message]</i>}
+                      </div>
+                      <span className="absolute right-2 top-2 text-gray-300 text-xs">
+                        {/* Optional: add a subtle quote bar or icon */}
+                      </span>
+                    </div>
+                  )}
                   <div>{msg.body || <i>[Media message]</i>}</div>
-                  <div className="text-[11px] text-gray-500 mt-1 text-right">
+                  <div className="text-[11px] text-gray-500 mt-1 text-right ">
                     {formatTime(msg.timestamp)}
                     {msg.failed && (
                       <span className="text-red-500 text-xs ml-2">Failed</span>
@@ -213,8 +378,36 @@ export default function ChatWindow({ selectedChat }) {
         )}
       </div>
 
-      <div className="mt-4 flex gap-2 items-center">
-        {/* Plus button for media upload */}
+      {/* Reply preview UI */}
+      {replyTo && (
+        <div
+          className="flex items-center gap-2 bg-gray-50 border-l-4 border-green-500 px-2 py-1 rounded mb-2 cursor-pointer max-w-xs"
+          onClick={() => handleHighlight(replyTo.id)}
+          title="Go to replied message"
+          style={{ minHeight: 32 }}
+        >
+          <ReplyIcon className="w-4 h-4 text-green-600" />
+          <div className="flex-1 min-w-0">
+            <div className="text-xs text-gray-500 truncate">Replying to:</div>
+            <div className="text-xs text-gray-700 font-medium truncate max-w-[140px]">
+              {replyTo.body || "[Media message]"}
+            </div>
+          </div>
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              setReplyTo(null);
+            }}
+            className="text-gray-400 hover:text-gray-600 ml-1"
+            tabIndex={-1}
+            title="Cancel reply"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      <div className="mt-2 flex gap-2 items-center">
         <Button
           type="button"
           className="rounded-full p-0 w-10 h-10 flex items-center justify-center bg-gray-200 hover:bg-gray-300"
@@ -250,6 +443,7 @@ export default function ChatWindow({ selectedChat }) {
           Send
         </Button>
       </div>
+
       {mediaFile && (
         <div className="mt-2 flex items-center gap-2">
           <span className="text-xs text-gray-700 truncate">
@@ -266,6 +460,57 @@ export default function ChatWindow({ selectedChat }) {
           </Button>
         </div>
       )}
+
+      {contextMenu.visible && (
+        <div
+          style={{
+            position: "fixed",
+            top: contextMenu.y,
+            left: contextMenu.x,
+            zIndex: 1000,
+            background: "white",
+            borderRadius: 6,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            padding: "6px 0",
+            minWidth: 120,
+          }}
+          onMouseLeave={() => setContextMenu({ ...contextMenu, visible: false })}
+        >
+          <button
+            className="block w-full text-left text-xs px-4 py-2 hover:bg-gray-100"
+            onClick={handleReplyFromMenu}
+          >
+            Reply
+          </button>
+        </div>
+      )}
+
+      <Dialog open={showAllParticipants} onOpenChange={setShowAllParticipants}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>All Participants</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-72 overflow-y-auto space-y-1 mt-2">
+            {groupInfo?.participants?.map((p) => (
+              <div
+                key={typeof p.id === "object" ? p.id._serialized : p.id}
+                className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100"
+              >
+                <span className="font-mono text-xs text-gray-700">
+                  {(typeof p.id === "object" ? p.id._serialized : p.id)
+                    .replace(/^91/, "")
+                    .replace(/@c\.us$/, "")}
+                </span>
+                {p.isSuperAdmin ? (
+                  <span title="Super Admin">👑</span>
+                ) : p.isAdmin ? (
+                  <span title="Admin">⭐</span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

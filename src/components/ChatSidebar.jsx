@@ -6,6 +6,7 @@ export default function ChatSidebar({ onSelectChat }) {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedChatId, setSelectedChatId] = useState(null);
 
   const fetchChats = async () => {
     try {
@@ -24,14 +25,24 @@ export default function ChatSidebar({ onSelectChat }) {
 
   useEffect(() => {
     fetchChats();
+    const interval = setInterval(fetchChats, 60000); // auto-refresh every 10s
+    return () => clearInterval(interval);
   }, []);
+
+  // Auto-select first chat only if none is selected
+  useEffect(() => {
+    if (chats.length > 0 && !selectedChatId) {
+      const first = chats[0];
+      setSelectedChatId(first.id);
+      onSelectChat(first);
+    }
+  }, [chats]);
 
   // Filter chats by search (case-insensitive, chat name only, matches any word)
   const filteredChats = chats.filter(chat => {
     const name = (chat.name || "").toLowerCase().trim();
     const searchTerm = search.toLowerCase().trim();
     if (!searchTerm) return true;
-    // Split search into words and check if all are present in the name
     return searchTerm
       .split(/\s+/)
       .every(word => name.includes(word));
@@ -71,24 +82,16 @@ export default function ChatSidebar({ onSelectChat }) {
 
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto">
-        {filteredChats.map((chat) => {
+        {filteredChats.map(chat => {
           let previewMsg = null;
           if (chat.lastMessage) {
             if (
-              (chat.lastMessage.type === "image" ||
-                chat.lastMessage.type === "video" ||
-                chat.lastMessage.type === "document" ||
-                chat.lastMessage.type === "audio") &&
-              chat.lastMessage.body
+              ["image", "video", "document", "audio"].includes(chat.lastMessage.type)
             ) {
-              previewMsg = chat.lastMessage.body;
-            } else if (
-              chat.lastMessage.type === "image" ||
-              chat.lastMessage.type === "video" ||
-              chat.lastMessage.type === "audio" ||
-              chat.lastMessage.type === "document"
-            ) {
-              previewMsg = `[${chat.lastMessage.type.charAt(0).toUpperCase() + chat.lastMessage.type.slice(1)}]`;
+              previewMsg = chat.lastMessage.body
+                ? chat.lastMessage.body
+                : `[${chat.lastMessage.type.charAt(0).toUpperCase() +
+                    chat.lastMessage.type.slice(1)}]`;
             } else {
               previewMsg = chat.lastMessage.body;
             }
@@ -100,20 +103,27 @@ export default function ChatSidebar({ onSelectChat }) {
             (chat.lastMessage.from.startsWith("917399750001") ||
               chat.lastMessage.from.startsWith("917708238586"));
 
+          const isSelected = selectedChatId === chat.id;
+
           return (
             <div
               key={chat.id}
-              onClick={() => onSelectChat(chat)}
-              className="flex items-center gap-5 px-4 py-3 hover:bg-[#D9FDD3] cursor-pointer transition-all border-b border-gray-200"
+              onClick={() => {
+                setSelectedChatId(chat.id);
+                onSelectChat(chat);
+              }}
+              className={`flex items-center gap-5 px-4 py-3 cursor-pointer transition-all border-b border-gray-200 ${
+                isSelected ? "bg-[#D9FDD3]" : "hover:bg-[#f0f0f0]"
+              }`}
             >
               {/* Profile Icon with unread badge */}
               <div className="relative w-10 h-10 bg-[#cfd8dc] rounded-full flex items-center justify-center text-gray-700 font-semibold text-sm">
                 {chat.name?.[0]?.toUpperCase() || "?"}
-                {chat.unreadCount > 0 && (
+                {/* {chat.unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-[#25D366] text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center border border-white">
                     {chat.unreadCount}
                   </span>
-                )}
+                )} */}
               </div>
 
               {/* Chat Info */}
