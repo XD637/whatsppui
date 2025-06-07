@@ -1,7 +1,8 @@
+// app/layout.jsx
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
-import { ChatProvider } from "./ChatContext";
+import ClientProviders from "./ClientProviders";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,19 +22,17 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <ChatProvider>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <ClientProviders>
           {children}
           <Toaster
             richColors
             position="bottom-right"
             toastOptions={{
-              className: "text-xs px-2 py-1 rounded"
+              className: "text-xs px-2 py-1 rounded",
             }}
           />
-        </ChatProvider>
+        </ClientProviders>
       </body>
     </html>
   );
