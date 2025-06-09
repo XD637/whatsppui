@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FaUserAlt, FaEnvelope, FaLock } from 'react-icons/fa';
+import { FaUserAlt, FaEnvelope, FaLock, FaIdBadge } from 'react-icons/fa';
 
 export default function RegisterPage() {
   const [step, setStep] = useState('form'); // 'form' or 'otp'
-  const [form, setForm] = useState({ username: '', email: '', password: '' });
+  const [form, setForm] = useState({ username: '', email: '', password: '', userId: '' });
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputsRef = useRef([]);
 
@@ -30,50 +30,47 @@ export default function RegisterPage() {
     }
   };
 
-  // OTP input handler
   const handleOtpChange = (e, idx) => {
     const val = e.target.value;
-    if (!/^\d*$/.test(val)) return; // only digits
-
+    if (!/^\d*$/.test(val)) return;
     const newOtp = [...otp];
     newOtp[idx] = val.slice(-1);
     setOtp(newOtp);
+    if (val && idx < 5) inputsRef.current[idx + 1]?.focus();
+  };
 
-    // auto-focus next input
-    if (val && idx < 5) {
-      inputsRef.current[idx + 1].focus();
+  const handleOtpKeyDown = (e, idx) => {
+    if (e.key === "Backspace" && !otp[idx] && idx > 0) {
+      inputsRef.current[idx - 1]?.focus();
     }
   };
 
-const handleOtpSubmit = async (e) => {
-  e.preventDefault();
-  const code = otp.join('');
-  if (code.length !== 6) {
-    alert('Please enter the full 6-digit code.');
-    return;
-  }
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    const code = otp.join('');
+    if (code.length !== 6) {
+      alert('Please enter the full 6-digit code.');
+      return;
+    }
 
-  const res = await fetch('/api/auth/verify-otp', {
-    method: 'POST',
-    body: JSON.stringify({ email: form.email, otp: code }),
-    headers: { 'Content-Type': 'application/json' },
-  });
+    const res = await fetch('/api/auth/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email: form.email, otp: code }),
+      headers: { 'Content-Type': 'application/json' },
+    });
 
-  const data = await res.json();
-  if (data.success) {
-    alert('OTP verified! Your account is ready to rock 🚀');
-    window.location.href = '/auth/login'; 
-  } else {
-    alert(data.message || 'Invalid OTP, try again!');
-  }
-};
+    const data = await res.json();
+    if (data.success) {
+      alert('OTP verified! Your account is ready to rock 🚀');
+      window.location.href = '/auth/login';
+    } else {
+      alert(data.message || 'Invalid OTP, try again!');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#ECE5DD] flex items-center justify-center px-4">
-      <div
-        className="bg-white max-w-md w-full rounded-3xl shadow-2xl p-10 flex flex-col items-center
-                   transition-transform duration-300"
-      >
+      <div className="bg-white max-w-md w-full rounded-3xl shadow-2xl p-10 flex flex-col items-center transition-transform duration-300">
         {step === 'form' ? (
           <>
             <h1 className="text-3xl font-extrabold mb-8 text-[#075E54] tracking-tight select-none">
@@ -81,15 +78,23 @@ const handleOtpSubmit = async (e) => {
             </h1>
             <form onSubmit={handleFormSubmit} className="w-full space-y-7">
               <div className="relative">
+                <FaIdBadge className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input
+                  name="userId"
+                  placeholder="123"
+                  onChange={handleChange}
+                  required
+                  className="pl-12 border border-gray-300 rounded-2xl shadow-sm focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366] transition-all duration-300"
+                />
+              </div>
+              <div className="relative">
                 <FaUserAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
                   name="username"
                   placeholder="Username"
                   onChange={handleChange}
                   required
-                  className="pl-12 border border-gray-300 rounded-2xl shadow-sm
-                             focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366] 
-                             transition-all duration-300"
+                  className="pl-12 border border-gray-300 rounded-2xl shadow-sm focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366] transition-all duration-300"
                 />
               </div>
               <div className="relative">
@@ -100,9 +105,7 @@ const handleOtpSubmit = async (e) => {
                   placeholder="Email"
                   onChange={handleChange}
                   required
-                  className="pl-12 border border-gray-300 rounded-2xl shadow-sm
-                             focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]
-                             transition-all duration-300"
+                  className="pl-12 border border-gray-300 rounded-2xl shadow-sm focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366] transition-all duration-300"
                 />
               </div>
               <div className="relative">
@@ -113,15 +116,12 @@ const handleOtpSubmit = async (e) => {
                   placeholder="Password"
                   onChange={handleChange}
                   required
-                  className="pl-12 border border-gray-300 rounded-2xl shadow-sm
-                             focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]
-                             transition-all duration-300"
+                  className="pl-12 border border-gray-300 rounded-2xl shadow-sm focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366] transition-all duration-300"
                 />
               </div>
               <Button
                 type="submit"
-                className="bg-[#25D366] hover:bg-[#128C4A] text-white w-full py-4 rounded-3xl
-                           font-semibold text-lg shadow-lg hover:shadow-[#25D366]/60 transition-all duration-300"
+                className="bg-[#25D366] hover:bg-[#128C4A] text-white w-full py-4 rounded-3xl font-semibold text-lg shadow-lg hover:shadow-[#25D366]/60 transition-all duration-300"
               >
                 Register
               </Button>
@@ -152,8 +152,7 @@ const handleOtpSubmit = async (e) => {
                   onChange={(e) => handleOtpChange(e, idx)}
                   onKeyDown={(e) => handleOtpKeyDown(e, idx)}
                   ref={(el) => (inputsRef.current[idx] = el)}
-                  className="w-12 h-12 text-center rounded-lg border border-gray-300 shadow-sm
-                             focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366] text-xl font-mono"
+                  className="w-12 h-12 text-center rounded-lg border border-gray-300 shadow-sm focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366] text-xl font-mono"
                   inputMode="numeric"
                   autoFocus={idx === 0}
                 />
@@ -162,8 +161,7 @@ const handleOtpSubmit = async (e) => {
             <Button
               type="submit"
               onClick={handleOtpSubmit}
-              className="bg-[#25D366] hover:bg-[#128C4A] text-white w-full py-4 rounded-3xl
-                         font-semibold text-lg shadow-lg hover:shadow-[#25D366]/60 transition-all duration-300"
+              className="bg-[#25D366] hover:bg-[#128C4A] text-white w-full py-4 rounded-3xl font-semibold text-lg shadow-lg hover:shadow-[#25D366]/60 transition-all duration-300"
             >
               Verify OTP
             </Button>
