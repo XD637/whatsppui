@@ -25,11 +25,10 @@ export default function ChatSidebar({ onSelectChat }) {
 
   useEffect(() => {
     fetchChats();
-    const interval = setInterval(fetchChats, 60000); // auto-refresh every 10s
+    const interval = setInterval(fetchChats, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-select first chat only if none is selected
   useEffect(() => {
     if (chats.length > 0 && !selectedChatId) {
       const first = chats[0];
@@ -38,26 +37,86 @@ export default function ChatSidebar({ onSelectChat }) {
     }
   }, [chats]);
 
-  // Filter chats by search (case-insensitive, chat name only, matches any word)
-  const filteredChats = chats.filter(chat => {
+  // WebSocket real-time message update
+  useEffect(() => {
+    const ws = new WebSocket("ws://192.168.0.169:7777");
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "NEW_MESSAGE") {
+          const { group, body, from, timestamp } = msg.data;
+          setChats((prevChats) => {
+            const existingChat = prevChats.find((chat) => chat.name === group);
+
+            const newLastMessage = {
+              body,
+              type: "chat",
+              from,
+              timestamp: new Date(timestamp).getTime(),
+              fromMe: false,
+            };
+
+            if (existingChat) {
+              const updated = {
+                ...existingChat,
+                lastMessage: newLastMessage,
+              };
+              return [
+                updated,
+                ...prevChats.filter((c) => c.name !== group),
+              ];
+            } else {
+              const newChat = {
+                id: `${group.replace(/\s/g, "_")}_${Date.now()}`, // fallback id
+                name: group,
+                isGroup: true,
+                unreadCount: 0,
+                lastMessage: newLastMessage,
+              };
+              return [newChat, ...prevChats];
+            }
+          });
+        }
+      } catch (err) {
+        console.error("WebSocket message parse error:", err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err);
+    };
+
+    ws.onclose = () => {
+      console.warn("WebSocket closed");
+    };
+
+    return () => ws.close();
+  }, []);
+
+  const sortedChats = [...chats].sort((a, b) => {
+    const timeA = new Date(a.lastMessage?.timestamp || 0).getTime();
+    const timeB = new Date(b.lastMessage?.timestamp || 0).getTime();
+    return timeB - timeA;
+  });
+
+  const filteredChats = sortedChats.filter((chat) => {
     const name = (chat.name || "").toLowerCase().trim();
     const searchTerm = search.toLowerCase().trim();
     if (!searchTerm) return true;
     return searchTerm
       .split(/\s+/)
-      .every(word => name.includes(word));
+      .every((word) => name.includes(word));
   });
 
   return (
     <aside className="w-[20%] border-r border-gray-300 bg-white flex flex-col">
-      {/* Sidebar Header */}
+      {/* Header */}
       <div className="p-4 border-b border-gray-300 mb-4 flex justify-between items-center">
         <h2 className="text-xl font-bold text-[#075E54]">Chats</h2>
         <button
           onClick={fetchChats}
-          className={`text-[#075E54] hover:text-[#0b8b77] transition-all ${
-            loading ? "animate-spin" : ""
-          }`}
+          className={`text-[#075E54] hover:text-[#0b8b77] transition-all ${loading ? "animate-spin" : ""}`}
           title="Refresh"
         >
           <FiRefreshCw size={20} />
@@ -75,35 +134,17 @@ export default function ChatSidebar({ onSelectChat }) {
             className="w-full pl-10 pr-3 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#25D366] bg-gray-100 text-sm"
             placeholder="Search chats..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
       </div>
 
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto">
-        {filteredChats.map(chat => {
-          let previewMsg = null;
-          if (chat.lastMessage) {
-            if (
-              ["image", "video", "document", "audio"].includes(chat.lastMessage.type)
-            ) {
-              previewMsg = chat.lastMessage.body
-                ? chat.lastMessage.body
-                : `[${chat.lastMessage.type.charAt(0).toUpperCase() +
-                    chat.lastMessage.type.slice(1)}]`;
-            } else {
-              previewMsg = chat.lastMessage.body;
-            }
-          }
-
-          const previewTime = chat.lastMessage?.timestamp || null;
-          const isSentByMe =
-            typeof chat.lastMessage?.from === "string" &&
-            (chat.lastMessage.from.startsWith("917399750001") ||
-              chat.lastMessage.from.startsWith("917708238586"));
-
+        {filteredChats.map((chat) => {
           const isSelected = selectedChatId === chat.id;
+          const previewMsg = chat.lastMessage?.body || "No messages yet";
+          const previewTime = chat.lastMessage?.timestamp;
 
           return (
             <div
@@ -116,27 +157,16 @@ export default function ChatSidebar({ onSelectChat }) {
                 isSelected ? "bg-[#D9FDD3]" : "hover:bg-[#f0f0f0]"
               }`}
             >
-              {/* Profile Icon with unread badge */}
               <div className="relative w-10 h-10 bg-[#cfd8dc] rounded-full flex items-center justify-center text-gray-700 font-semibold text-sm">
                 {chat.name?.[0]?.toUpperCase() || "?"}
-                {/* {chat.unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#25D366] text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center border border-white">
-                    {chat.unreadCount}
-                  </span>
-                )} */}
               </div>
 
-              {/* Chat Info */}
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-gray-900 truncate">
                   {chat.name || chat.id}
                 </div>
                 <div className="text-xs truncate text-[#075E54] font-semibold">
-                  {previewMsg ? (
-                    previewMsg
-                  ) : (
-                    <i className="text-gray-400">No messages yet</i>
-                  )}
+                  {previewMsg}
                 </div>
                 {previewTime && (
                   <div className="text-[10px] text-gray-400">
@@ -151,7 +181,6 @@ export default function ChatSidebar({ onSelectChat }) {
           );
         })}
 
-        {/* If no chats are found */}
         {filteredChats.length === 0 && (
           <div className="p-4 text-sm text-gray-500 italic text-center">
             No chats available
