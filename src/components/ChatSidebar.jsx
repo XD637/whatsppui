@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { FiRefreshCw, FiSearch } from "react-icons/fi";
 
 export default function ChatSidebar({ onSelectChat }) {
@@ -8,13 +8,20 @@ export default function ChatSidebar({ onSelectChat }) {
   const [search, setSearch] = useState("");
   const [selectedChatId, setSelectedChatId] = useState(null);
 
+  const selectedChatIdRef = useRef(null);
+  const wsRef = useRef(null); // 🛡️ keep WebSocket instance persistent
+
   const fetchChats = async () => {
     try {
       setLoading(true);
       const res = await fetch("http://192.168.0.169:4444/api/chat-list");
       const data = await res.json();
       if (data.success) {
-        setChats(data.chats);
+        const enriched = data.chats.map((chat) => ({
+          ...chat,
+          unreadCount: 0,
+        }));
+        setChats(enriched);
       }
     } catch (err) {
       console.error("Failed to fetch chats", err);
@@ -33,34 +40,53 @@ export default function ChatSidebar({ onSelectChat }) {
     if (chats.length > 0 && !selectedChatId) {
       const first = chats[0];
       setSelectedChatId(first.id);
+      selectedChatIdRef.current = first.id;
       onSelectChat(first);
     }
   }, [chats]);
 
-  // WebSocket real-time message update
+  const handleSelectChat = (chat) => {
+    setSelectedChatId(chat.id);
+    selectedChatIdRef.current = chat.id;
+    onSelectChat(chat);
+    setChats((prev) =>
+      prev.map((c) => (c.id === chat.id ? { ...c, unreadCount: 0 } : c))
+    );
+  };
+
   useEffect(() => {
+    if (wsRef.current) return; // 🛑 prevent multiple connections
+
     const ws = new WebSocket("ws://192.168.0.169:7777");
+    wsRef.current = ws;
+
+    ws.onopen = () => console.log("✅ WebSocket connected");
 
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === "NEW_MESSAGE") {
           const { group, body, from, timestamp } = msg.data;
+          const chatId = `${group.replace(/\s/g, "_")}`;
+          const newLastMessage = {
+            body,
+            type: "chat",
+            from,
+            timestamp: new Date(timestamp).getTime(),
+            fromMe: false,
+          };
+
           setChats((prevChats) => {
             const existingChat = prevChats.find((chat) => chat.name === group);
-
-            const newLastMessage = {
-              body,
-              type: "chat",
-              from,
-              timestamp: new Date(timestamp).getTime(),
-              fromMe: false,
-            };
-
             if (existingChat) {
+              const selectedChat = chats.find((c) => c.id === selectedChatIdRef.current);
+              const isUnread = selectedChat ? selectedChat.name !== group : true;
               const updated = {
                 ...existingChat,
                 lastMessage: newLastMessage,
+                unreadCount: isUnread
+                  ? (existingChat.unreadCount || 0) + 1
+                  : 0,
               };
               return [
                 updated,
@@ -68,10 +94,10 @@ export default function ChatSidebar({ onSelectChat }) {
               ];
             } else {
               const newChat = {
-                id: `${group.replace(/\s/g, "_")}_${Date.now()}`, // fallback id
+                id: `${chatId}_${Date.now()}`,
                 name: group,
                 isGroup: true,
-                unreadCount: 0,
+                unreadCount: 1,
                 lastMessage: newLastMessage,
               };
               return [newChat, ...prevChats];
@@ -83,15 +109,14 @@ export default function ChatSidebar({ onSelectChat }) {
       }
     };
 
-    ws.onerror = (err) => {
-      console.error("WebSocket error:", err);
-    };
+    ws.onerror = (err) => console.error("WebSocket error:", err);
+    ws.onclose = () => console.warn("WebSocket closed");
 
-    ws.onclose = () => {
-      console.warn("WebSocket closed");
+    return () => {
+      console.log("Cleaning up WebSocket...");
+      ws.close();
+      wsRef.current = null;
     };
-
-    return () => ws.close();
   }, []);
 
   const sortedChats = [...chats].sort((a, b) => {
@@ -104,9 +129,7 @@ export default function ChatSidebar({ onSelectChat }) {
     const name = (chat.name || "").toLowerCase().trim();
     const searchTerm = search.toLowerCase().trim();
     if (!searchTerm) return true;
-    return searchTerm
-      .split(/\s+/)
-      .every((word) => name.includes(word));
+    return searchTerm.split(/\s+/).every((word) => name.includes(word));
   });
 
   return (
@@ -123,7 +146,7 @@ export default function ChatSidebar({ onSelectChat }) {
         </button>
       </div>
 
-      {/* Search Bar */}
+      {/* Search */}
       <div className="px-4 mb-4">
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -149,16 +172,18 @@ export default function ChatSidebar({ onSelectChat }) {
           return (
             <div
               key={chat.id}
-              onClick={() => {
-                setSelectedChatId(chat.id);
-                onSelectChat(chat);
-              }}
-              className={`flex items-center gap-5 px-4 py-3 cursor-pointer transition-all border-b border-gray-200 ${
+              onClick={() => handleSelectChat(chat)}
+              className={`flex items-center gap-4 px-4 py-3 cursor-pointer transition-all border-b border-gray-200 ${
                 isSelected ? "bg-[#D9FDD3]" : "hover:bg-[#f0f0f0]"
               }`}
             >
               <div className="relative w-10 h-10 bg-[#cfd8dc] rounded-full flex items-center justify-center text-gray-700 font-semibold text-sm">
                 {chat.name?.[0]?.toUpperCase() || "?"}
+                {chat.unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[#25D366] text-white text-[10px] px-[6px] py-[2px] rounded-full">
+                    {chat.unreadCount}
+                  </span>
+                )}
               </div>
 
               <div className="flex-1 min-w-0">

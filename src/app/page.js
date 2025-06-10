@@ -6,6 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import ChatSidebar from "@/components/ChatSidebar";
 import ChatWindow from "@/components/ChatWindow";
 import ActionsPanel from "@/components/ActionsPanel";
+import Navbar from "@/components/Navbar";
 import { useChat } from "./ChatContext";
 import { toast } from "sonner";
 
@@ -110,19 +111,11 @@ export default function Home() {
 
   return (
     <div className="relative h-screen w-full">
+          <Navbar />
       <div className="flex h-full">
         <ChatSidebar onSelectChat={setSelectedChat} />
         <ChatWindow selectedChat={selectedChat} />
         {session?.user?.role === "admin" && <ActionsPanel />}
-      </div>
-
-      <div className="absolute bottom-4 right-4 z-50">
-        <button
-          onClick={() => signOut({ callbackUrl: "/auth/login" })}
-          className="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-600 rounded-xl text-sm shadow"
-        >
-          Logout
-        </button>
       </div>
     </div>
   );
