@@ -28,7 +28,7 @@ export async function POST(req) {
 
     // Now update the uuid field with the given userId (which is like a custom ID you're setting)
     await query(
-      'UPDATE users SET uuid = ? WHERE id = ?',
+      'UPDATE users SET uuid = ? WHERE userid = ?',
       [userId, insertedUserId]
     );
 

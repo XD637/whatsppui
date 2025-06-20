@@ -1,15 +1,17 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
 import { FiRefreshCw, FiSearch } from "react-icons/fi";
+import { useWebSocket } from "@/context/WebSocketContext";
 
 export default function ChatSidebar({ onSelectChat }) {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedChatId, setSelectedChatId] = useState(null);
-
   const selectedChatIdRef = useRef(null);
-  const wsRef = useRef(null); // 🛡️ keep WebSocket instance persistent
+  const socketRef = useWebSocket();
+  const chatsRef = useRef(chats);
+  chatsRef.current = chats;
 
   const fetchChats = async () => {
     try {
@@ -55,19 +57,13 @@ export default function ChatSidebar({ onSelectChat }) {
   };
 
   useEffect(() => {
-    if (wsRef.current) return; // 🛑 prevent multiple connections
+    if (!socketRef?.current) return;
 
-    const ws = new WebSocket("ws://192.168.0.169:7777");
-    wsRef.current = ws;
-
-    ws.onopen = () => console.log("✅ WebSocket connected");
-
-    ws.onmessage = (event) => {
+    const handleMessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === "NEW_MESSAGE") {
-          const { group, body, from, timestamp } = msg.data;
-          const chatId = `${group.replace(/\s/g, "_")}`;
+          const { group, body, from, timestamp, chatId } = msg.data;
           const newLastMessage = {
             body,
             type: "chat",
@@ -77,24 +73,21 @@ export default function ChatSidebar({ onSelectChat }) {
           };
 
           setChats((prevChats) => {
-            const existingChat = prevChats.find((chat) => chat.name === group);
+            const existingChat = prevChats.find((chat) => chat.id === chatId);
             if (existingChat) {
-              const selectedChat = chats.find((c) => c.id === selectedChatIdRef.current);
-              const isUnread = selectedChat ? selectedChat.name !== group : true;
+              const isUnread = selectedChatIdRef.current !== chatId;
               const updated = {
                 ...existingChat,
                 lastMessage: newLastMessage,
-                unreadCount: isUnread
-                  ? (existingChat.unreadCount || 0) + 1
-                  : 0,
+                unreadCount: isUnread ? (existingChat.unreadCount || 0) + 1 : 0,
               };
               return [
                 updated,
-                ...prevChats.filter((c) => c.name !== group),
+                ...prevChats.filter((c) => c.id !== chatId),
               ];
             } else {
               const newChat = {
-                id: `${chatId}_${Date.now()}`,
+                id: chatId,
                 name: group,
                 isGroup: true,
                 unreadCount: 1,
@@ -109,15 +102,10 @@ export default function ChatSidebar({ onSelectChat }) {
       }
     };
 
-    ws.onerror = (err) => console.error("WebSocket error:", err);
-    ws.onclose = () => console.warn("WebSocket closed");
-
-    return () => {
-      console.log("Cleaning up WebSocket...");
-      ws.close();
-      wsRef.current = null;
-    };
-  }, []);
+    const ws = socketRef.current;
+    ws.addEventListener("message", handleMessage);
+    return () => ws.removeEventListener("message", handleMessage);
+  }, [socketRef]);
 
   const sortedChats = [...chats].sort((a, b) => {
     const timeA = new Date(a.lastMessage?.timestamp || 0).getTime();
@@ -128,25 +116,21 @@ export default function ChatSidebar({ onSelectChat }) {
   const filteredChats = sortedChats.filter((chat) => {
     const name = (chat.name || "").toLowerCase().trim();
     const searchTerm = search.toLowerCase().trim();
-    if (!searchTerm) return true;
     return searchTerm.split(/\s+/).every((word) => name.includes(word));
   });
 
   return (
     <aside className="w-[20%] border-r border-gray-300 bg-white flex flex-col">
-      {/* Header */}
       <div className="p-4 border-b border-gray-300 mb-4 flex justify-between items-center">
         <h2 className="text-xl font-bold text-[#075E54]">Chats</h2>
         <button
           onClick={fetchChats}
           className={`text-[#075E54] hover:text-[#0b8b77] transition-all ${loading ? "animate-spin" : ""}`}
-          title="Refresh"
         >
           <FiRefreshCw size={20} />
         </button>
       </div>
 
-      {/* Search */}
       <div className="px-4 mb-4">
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -162,7 +146,6 @@ export default function ChatSidebar({ onSelectChat }) {
         </div>
       </div>
 
-      {/* Chat List */}
       <div className="flex-1 overflow-y-auto">
         {filteredChats.map((chat) => {
           const isSelected = selectedChatId === chat.id;
@@ -205,7 +188,6 @@ export default function ChatSidebar({ onSelectChat }) {
             </div>
           );
         })}
-
         {filteredChats.length === 0 && (
           <div className="p-4 text-sm text-gray-500 italic text-center">
             No chats available

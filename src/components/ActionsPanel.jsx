@@ -184,16 +184,18 @@ export default function ActionsPanel() {
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Excel Upload</label>
+          <label className="block text-sm font-medium mb-1 cursor-pointer">
+            Excel Upload
+          </label>
           <Input
             type="file"
-            className="bg-white"
+            className="bg-white cursor-pointer"
             onChange={handleExcelChange}
             ref={fileInputRef}
           />
           <div className="mt-2 flex gap-2">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1 cursor-pointer">
                 Field Name
               </label>
               <div className="flex gap-2 items-center">
@@ -210,12 +212,12 @@ export default function ActionsPanel() {
                     }
                   }}
                 >
-                  <SelectTrigger className="w-40 bg-white border text-sm">
+                  <SelectTrigger className="w-40 bg-white border text-sm cursor-pointer">
                     <SelectValue placeholder="Select field" />
                   </SelectTrigger>
                   <SelectContent>
                     {FIELD_OPTIONS.map((opt) => (
-                      <SelectItem key={opt} value={opt}>
+                      <SelectItem key={opt} value={opt} className="cursor-pointer">
                         {opt}
                       </SelectItem>
                     ))}
@@ -225,7 +227,7 @@ export default function ActionsPanel() {
                 !FIELD_OPTIONS.includes(fieldName) ? (
                   <Input
                     placeholder="Type field name"
-                    className="bg-white flex-1 border border-gray-300"
+                    className="bg-white flex-1 border border-gray-300 cursor-pointer"
                     value={customField}
                     onChange={(e) => {
                       setCustomField(e.target.value);
@@ -241,21 +243,25 @@ export default function ActionsPanel() {
           </div>
           <div className="mt-2 flex gap-2">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-1">Limit</label>
+              <label className="block text-sm font-medium mb-1 cursor-pointer">
+                Limit
+              </label>
               <Input
                 type="number"
                 min={1}
-                className="bg-white"
+                className="bg-white cursor-pointer"
                 value={limit}
                 onChange={(e) => setLimit(e.target.value)}
               />
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-1">Offset</label>
+              <label className="block text-sm font-medium mb-1 cursor-pointer">
+                Offset
+              </label>
               <Input
                 type="number"
                 min={0}
-                className="bg-white"
+                className="bg-white cursor-pointer"
                 value={offset}
                 onChange={(e) => setOffset(e.target.value)}
               />
@@ -263,13 +269,13 @@ export default function ActionsPanel() {
           </div>
           <div className="mt-3 flex justify-end gap-2">
             <Button
-              className="bg-gray-800 text-white hover:bg-gray-900 rounded-full"
+              className="bg-gray-800 text-white hover:bg-gray-900 rounded-full cursor-pointer"
               onClick={handleExtract}
             >
               Extract
             </Button>
             <Button
-              className="bg-white text-black hover:bg-gray-100 rounded-full"
+              className="bg-white text-black hover:bg-gray-100 rounded-full cursor-pointer"
               onClick={handleClearAll}
               type="button"
             >
@@ -283,7 +289,7 @@ export default function ActionsPanel() {
               </div>
               <ul className="text-sm text-gray-700 space-y-1">
                 {extractedData.map((num, idx) => (
-                  <li key={idx} className="truncate">
+                  <li key={idx} className="truncate cursor-pointer">
                     {num}
                   </li>
                 ))}
@@ -293,12 +299,12 @@ export default function ActionsPanel() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-sm font-medium mb-1 cursor-pointer">
             Upload Media (Max 16MB, optional)
           </label>
           <Input
             type="file"
-            className="bg-white"
+            className="bg-white cursor-pointer"
             onChange={handleMediaChange}
             accept="image/*,video/*,application/pdf"
           />
@@ -310,11 +316,13 @@ export default function ActionsPanel() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Add Message</label>
+          <label className="block text-sm font-medium mb-1 cursor-pointer">
+            Add Message
+          </label>
           <Textarea
             rows={4}
             placeholder="Enter custom message"
-            className="bg-white"
+            className="bg-white cursor-pointer"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
           />
@@ -322,7 +330,7 @@ export default function ActionsPanel() {
 
         <div className="flex flex-col items-end space-y-1">
           <Button
-            className="w-44 bg-[#25D366] text-white hover:bg-[#20bd5c] rounded-full flex items-center justify-center gap-2"
+            className="w-44 bg-[#25D366] text-white hover:bg-[#20bd5c] rounded-full flex items-center justify-center gap-2 cursor-pointer"
             onClick={handleBulkSend}
             disabled={loading}
           >
@@ -358,7 +366,7 @@ export default function ActionsPanel() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="rounded px-3 py-1 text-xs"
+                      className="rounded px-3 py-1 text-xs cursor-pointer"
                     >
                       View Detailed Summary
                     </Button>
@@ -397,7 +405,7 @@ export default function ActionsPanel() {
                         </thead>
                         <tbody>
                           {summary.results.map((res, idx) => (
-                            <tr key={idx} className="border-b last:border-0">
+                            <tr key={idx} className="border-b last:border-0 cursor-pointer">
                               <td className="py-1 px-2">{idx + 1}</td>
                               <td className="py-1 px-2 font-mono">
                                 {res.chatId ? (
@@ -430,7 +438,7 @@ export default function ActionsPanel() {
                       </table>
                     </div>
                     <DialogClose asChild>
-                      <Button variant="outline" className="mt-4">
+                      <Button variant="outline" className="mt-4 cursor-pointer">
                         Close
                       </Button>
                     </DialogClose>
@@ -458,7 +466,7 @@ export default function ActionsPanel() {
                     {summary.results
                       .filter((r) => !r.success)
                       .map((f, i) => (
-                        <li key={i}>
+                        <li key={i} className="cursor-pointer">
                           <span className="font-mono">
                             {f.chatId
                               ? f.chatId

@@ -255,22 +255,25 @@ export default function ChatWindow({ selectedChat }) {
             {groupInfo.participants?.slice(0, 8).map((p) => (
               <span
                 key={typeof p.id === "object" ? p.id._serialized : p.id}
-                className={`px-2 py-1 rounded bg-gray-100 border text-xs ${
+                className={`px-2 py-1 rounded bg-gray-100 border text-xs cursor-pointer ${
                   p.isAdmin || p.isSuperAdmin
                     ? "border-green-400 text-green-700 font-semibold"
                     : "border-gray-200"
                 }`}
                 title={typeof p.id === "object" ? p.id._serialized : p.id}
               >
-                {(typeof p.id === "object" ? p.id._serialized : p.id)
-                  .replace(/^91/, "")
-                  .replace(/@c\.us$/, "")}
+                {/* Show name if exists, else fallback to number */}
+                {p.name
+                  ? p.name
+                  : (typeof p.id === "object" ? p.id._serialized : p.id)
+                      .replace(/^91/, "")
+                      .replace(/@c\.us$/, "")}
                 {p.isSuperAdmin ? " 👑" : p.isAdmin ? " ⭐" : ""}
               </span>
             ))}
             {groupInfo.participants?.length > 8 && (
               <button
-                className="text-xs text-blue-600 underline"
+                className="text-xs text-blue-600 underline cursor-pointer"
                 onClick={() => setShowAllParticipants(true)}
                 type="button"
               >
@@ -294,7 +297,6 @@ export default function ChatWindow({ selectedChat }) {
           <>
             {messages.map((msg) => {
               const isSender = msg.sent === 1;
-              // Use the reply object from API if present
               const repliedMsg = msg.reply;
 
               return (
@@ -305,13 +307,14 @@ export default function ChatWindow({ selectedChat }) {
                     ${isSender ? "bg-[#DCF8C6] self-end ml-auto" : "bg-[#F0F0F0] self-start"}
                     ${highlightedMsgId === msg.id ? "ring-1 ring-green-400" : ""}
                     my-3 mx-6
+                    cursor-pointer
                   `}
                   onContextMenu={(e) => handleContextMenu(e, msg)}
                 >
                   {/* Reply icon top right */}
                   <button
                     onClick={() => setReplyTo(msg)}
-                    className="absolute -top-3 right-0 opacity-0 group-hover:opacity-100 transition bg-white rounded-full shadow p-1"
+                    className="absolute -top-3 right-0 opacity-0 group-hover:opacity-100 transition bg-white rounded-full shadow p-1 cursor-pointer"
                     title="Reply"
                     style={{ zIndex: 2 }}
                   >
@@ -404,7 +407,7 @@ export default function ChatWindow({ selectedChat }) {
               e.stopPropagation();
               setReplyTo(null);
             }}
-            className="text-gray-400 hover:text-gray-600 ml-1"
+            className="text-gray-400 hover:text-gray-600 ml-1 cursor-pointer"
             tabIndex={-1}
             title="Cancel reply"
           >
@@ -416,7 +419,7 @@ export default function ChatWindow({ selectedChat }) {
       <div className="mt-2 flex gap-2 items-center">
         <Button
           type="button"
-          className="rounded-full p-0 w-10 h-10 flex items-center justify-center bg-gray-200 hover:bg-gray-300"
+          className="rounded-full p-0 w-10 h-10 flex items-center justify-center bg-gray-200 hover:bg-gray-300 cursor-pointer"
           onClick={() => fileInputRef.current.click()}
           title="Attach media"
         >
@@ -431,7 +434,7 @@ export default function ChatWindow({ selectedChat }) {
         />
         <Input
           placeholder="Type a message..."
-          className="rounded-full flex-1 min-h-[48px] text-base"
+          className="rounded-full flex-1 min-h-[48px] text-base cursor-pointer"
           style={{ height: "48px" }}
           value={messageText}
           onChange={(e) => setMessageText(e.target.value)}
@@ -443,7 +446,7 @@ export default function ChatWindow({ selectedChat }) {
           }}
         />
         <Button
-          className="bg-[#25D366] text-white hover:bg-[#20bd5c] rounded-full px-6 h-12"
+          className="bg-[#25D366] text-white hover:bg-[#20bd5c] rounded-full px-6 h-12 cursor-pointer"
           onClick={handleSend}
         >
           Send
@@ -459,7 +462,7 @@ export default function ChatWindow({ selectedChat }) {
             size="sm"
             variant="ghost"
             onClick={() => setMediaFile(null)}
-            className="text-red-500"
+            className="text-red-500 cursor-pointer"
             title="Remove"
           >
             ×
@@ -483,7 +486,7 @@ export default function ChatWindow({ selectedChat }) {
           onMouseLeave={() => setContextMenu({ ...contextMenu, visible: false })}
         >
           <button
-            className="block w-full text-left text-xs px-4 py-2 hover:bg-gray-100"
+            className="block w-full text-left text-xs px-4 py-2 hover:bg-gray-100 cursor-pointer"
             onClick={handleReplyFromMenu}
           >
             Reply
@@ -500,7 +503,7 @@ export default function ChatWindow({ selectedChat }) {
             {groupInfo?.participants?.map((p) => (
               <div
                 key={typeof p.id === "object" ? p.id._serialized : p.id}
-                className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100"
+                className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 cursor-pointer"
               >
                 <span className="font-mono text-xs text-gray-700">
                   {(typeof p.id === "object" ? p.id._serialized : p.id)

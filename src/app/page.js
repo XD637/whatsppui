@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import ChatSidebar from "@/components/ChatSidebar";
 import ChatWindow from "@/components/ChatWindow";
 import ActionsPanel from "@/components/ActionsPanel";
 import Navbar from "@/components/Navbar";
 import { useChat } from "./ChatContext";
 import { toast } from "sonner";
+import { useWebSocket } from "@/context/WebSocketContext"; // <-- import the hook
 
 export default function Home() {
   const { selectedChat, setSelectedChat } = useChat();
@@ -16,7 +17,7 @@ export default function Home() {
   const { status, data: session } = useSession();
   const [delayed, setDelayed] = useState(true);
   const [toasterReady, setToasterReady] = useState(false);
-  const socketRef = useRef(null);
+  const socketRef = useWebSocket(); // <-- use the context
 
   const userId = session?.user?.uuid;
 
@@ -35,9 +36,8 @@ export default function Home() {
   }, [status, router, delayed]);
 
   useEffect(() => {
-    if (status === "authenticated") {
-      const socket = new WebSocket("ws://192.168.0.169:7777");
-      socketRef.current = socket;
+    if (status === "authenticated" && socketRef?.current) {
+      const socket = socketRef.current;
 
       socket.onopen = () => {
         console.log("WebSocket connected");
@@ -72,7 +72,21 @@ export default function Home() {
                 action: {
                   label: "View",
                   onClick: () => {
-                    console.log("Redirect or open chat logic here");
+                    setSelectedChat((prev) => {
+                      if (prev && prev.id === message.data.chatId) return prev;
+                      return {
+                        id: message.data.chatId,
+                        name: group,
+                        isGroup: true,
+                      };
+                    });
+
+                    setTimeout(() => {
+                      if (message.data.messageId) {
+                        const el = document.getElementById(`msg-${message.data.messageId}`);
+                        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }
+                    }, 500);
                   },
                 },
                 cancel: {
@@ -89,15 +103,17 @@ export default function Home() {
         }
       };
 
+      socket.onerror = (err) => {
+        console.error("WebSocket error:", err);
+      };
+
       socket.onclose = () => {
         console.log("WebSocket disconnected");
       };
 
-      return () => {
-        socket.close();
-      };
+      // No need to close the socket here, context handles cleanup
     }
-  }, [status, toasterReady, userId]);
+  }, [status, toasterReady, userId, setSelectedChat, socketRef]);
 
   if (status === "loading" || delayed) {
     return (
@@ -111,11 +127,11 @@ export default function Home() {
 
   return (
     <div className="relative h-screen w-full">
-          <Navbar />
+      <Navbar />
       <div className="flex h-full">
         <ChatSidebar onSelectChat={setSelectedChat} />
         <ChatWindow selectedChat={selectedChat} />
-        {session?.user?.role === "admin" && <ActionsPanel />}
+        {(session?.user?.role === "admin" || session?.user?.role === "user") && <ActionsPanel />}
       </div>
     </div>
   );
