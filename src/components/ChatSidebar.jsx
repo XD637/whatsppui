@@ -13,10 +13,14 @@ export default function ChatSidebar({ onSelectChat }) {
   const chatsRef = useRef(chats);
   chatsRef.current = chats;
 
+  var base_api_url = process.env.NEXT_PUBLIC_BASE_API_URL;
+  var base_api_port = process.env.NEXT_PUBLIC_BASE_API_PORT;
+  console.log("Base API URL:", base_api_url);
+
   const fetchChats = async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://192.168.0.169:4444/api/chat-list");
+      const res = await fetch(`${base_api_url}:${base_api_port}/api/chat-list`);
       const data = await res.json();
       if (data.success) {
         const enriched = data.chats.map((chat) => ({
@@ -34,17 +38,18 @@ export default function ChatSidebar({ onSelectChat }) {
 
   useEffect(() => {
     fetchChats();
-    const interval = setInterval(fetchChats, 60000);
+    const interval = setInterval(fetchChats, 1800000); // Fetch every 30 minutes
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    if (chats.length > 0 && !selectedChatId) {
-      const first = chats[0];
-      setSelectedChatId(first.id);
-      selectedChatIdRef.current = first.id;
-      onSelectChat(first);
-    }
+    // Remove auto-select: do not select any chat on initial load
+    // if (chats.length > 0 && !selectedChatId) {
+    //   const first = chats[0];
+    //   setSelectedChatId(first.id);
+    //   selectedChatIdRef.current = first.id;
+    //   onSelectChat(first);
+    // }
   }, [chats]);
 
   const handleSelectChat = (chat) => {

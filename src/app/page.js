@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import ChatSidebar from "@/components/ChatSidebar";
@@ -17,6 +17,7 @@ export default function Home() {
   const { status, data: session } = useSession();
   const [delayed, setDelayed] = useState(true);
   const [toasterReady, setToasterReady] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const socketRef = useWebSocket(); // <-- use the context
 
   const userId = session?.user?.uuid;
@@ -48,6 +49,8 @@ export default function Home() {
         try {
           const message = JSON.parse(event.data);
 
+          console.log("WS message.data:", message.data);
+
           if (message.type === "NEW_MESSAGE" && toasterReady) {
             const { from, group, body, timestamp, replyTo } = message.data;
 
@@ -65,6 +68,16 @@ export default function Home() {
               if (replyTo?.body) {
                 toastDescription = `Replying to: "${replyTo.body}"\n\n${body}\n${timestamp}`;
               }
+
+              // Save notification
+              setNotifications((prev) => [
+                ...prev,
+                {
+                  title: `${group} - ${from}`,
+                  description: toastDescription,
+                  timestamp: Date.now(),
+                },
+              ]);
 
               toast(`${group} - ${from}`, {
                 description: toastDescription,
@@ -95,6 +108,26 @@ export default function Home() {
                     console.log("Toast closed");
                   },
                 },
+              });
+
+              // Save notification to DB
+              console.log("Saving notification for userId:", userId);
+              fetch("/api/notifications/save", {
+                method: "POST",
+                body: JSON.stringify({
+                  userId,
+                  title: `${group} - ${from}`,
+                  description: toastDescription,
+                  chatId: message.data.chatId ?? null,
+                  messageId: message.data.messageId ?? null,
+                }),
+                headers: { "Content-Type": "application/json" },
+              }).then(res => res.json()).then(data => {
+                if (!data.success) {
+                  console.error("Failed to save notification:", data.message);
+                }
+              }).catch(err => {
+                console.error("Notification save error:", err);
               });
             }
           }
@@ -127,7 +160,7 @@ export default function Home() {
 
   return (
     <div className="relative h-screen w-full">
-      <Navbar />
+      <Navbar userId={userId} setSelectedChat={setSelectedChat} />
       <div className="flex h-full">
         <ChatSidebar onSelectChat={setSelectedChat} />
         <ChatWindow selectedChat={selectedChat} />

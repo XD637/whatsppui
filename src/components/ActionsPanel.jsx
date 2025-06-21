@@ -40,6 +40,7 @@ export default function ActionsPanel() {
   const [progress, setProgress] = useState(0);
   const [summary, setSummary] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const base_api_url = process.env.BASE_API_URL;
 
   // For custom field input
   const [customField, setCustomField] = useState("");
@@ -72,8 +73,7 @@ export default function ActionsPanel() {
     formData.append("fieldName", fieldName);
 
     try {
-      const res = await fetch("http://192.168.0.169:3002/upload-excel", {
-        method: "POST",
+      const res = await fetch("http://192.168.0.169:3002/upload-excel", { //need to change this URL to your backend endpoint
         body: formData,
       });
 
