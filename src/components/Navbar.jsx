@@ -3,16 +3,18 @@
 import React, { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { Bell } from "lucide-react";
+import { useSession } from "next-auth/react";
 
-export default function Navbar({ userId, setSelectedChat }) {
+export default function Navbar({ setSelectedChat }) {
+  const { data: session } = useSession();
   const [showModal, setShowModal] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    if (showModal && userId) {
+    if (showModal && session?.user?.id) {
       fetch(`/api/notifications/user`, {
         method: "POST",
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId: session.user.id }),
         headers: { "Content-Type": "application/json" },
       })
         .then((res) => res.json())
@@ -20,18 +22,18 @@ export default function Navbar({ userId, setSelectedChat }) {
           if (data.success) setNotifications(data.notifications);
         });
     }
-  }, [showModal, userId]);
+  }, [showModal, session?.user?.id]);
 
   const handleClear = async () => {
     await fetch("/api/notifications/clear", {
       method: "POST",
-      body: JSON.stringify({ userId }),
+      body: JSON.stringify({ userId: session.user.id }),
       headers: { "Content-Type": "application/json" },
     });
     // Refresh notifications after clearing
-    fetch(`${baseUrl}/api/notifications/user`, {
+    fetch(`/api/notifications/user`, {
       method: "POST",
-      body: JSON.stringify({ userId }),
+      body: JSON.stringify({ userId: session.user.id }),
       headers: { "Content-Type": "application/json" },
     })
       .then((res) => res.json())
@@ -58,9 +60,11 @@ export default function Navbar({ userId, setSelectedChat }) {
   return (
     <>
       <nav className="w-full h-14 bg-[#075E54] text-white flex items-center justify-between px-6 shadow-md z-50">
-        <h1 className="text-lg font-semibold">WhatsApp Dashboard</h1>
         <div className="flex items-center gap-4">
-          <button
+          <h1 className="text-lg font-semibold">WhatsApp</h1>
+        </div>
+        <div className="flex items-center gap-4">
+          {/* <button
             className="relative"
             onClick={() => setShowModal(true)}
             title="Notifications"
@@ -71,7 +75,13 @@ export default function Navbar({ userId, setSelectedChat }) {
                 {notifications.length}
               </span>
             )}
-          </button>
+          </button> */}
+          {/* Show username beside the logout button */}
+          {session?.user?.name && (
+            <span className="text-sm font-medium text-white opacity-80 mr-2">
+              {session.user.name}
+            </span>
+          )}
           <button
             onClick={() => signOut({ callbackUrl: "/auth/login" })}
             className="bg-white text-[#075E54] px-3 py-1 rounded-full text-sm font-semibold hover:bg-green-100 transition"

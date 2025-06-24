@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { FiRefreshCw, FiSearch } from "react-icons/fi";
 import { useWebSocket } from "@/context/WebSocketContext";
 
-export default function ChatSidebar({ onSelectChat }) {
+export default function ChatSidebar({ onSelectChat, onIncomingMessage }) {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -68,7 +68,7 @@ export default function ChatSidebar({ onSelectChat }) {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === "NEW_MESSAGE") {
-          const { group, body, from, timestamp, chatId } = msg.data;
+          const { group, body, from, timestamp, chatId, message } = msg.data;
           const newLastMessage = {
             body,
             type: "chat",
@@ -101,6 +101,17 @@ export default function ChatSidebar({ onSelectChat }) {
               return [newChat, ...prevChats];
             }
           });
+
+          // Notify ChatWindow if this chat is open
+          if (selectedChatIdRef.current === chatId && onIncomingMessage) {
+            onIncomingMessage(message || {
+              id: msg.data.message_id,
+              body,
+              from,
+              timestamp: new Date(timestamp).getTime(),
+              // ...other fields as needed...
+            });
+          }
         }
       } catch (err) {
         console.error("WebSocket message parse error:", err);

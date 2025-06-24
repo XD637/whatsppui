@@ -188,18 +188,10 @@ export default function ChatWindow({ selectedChat }) {
 
       const data = await res.json();
       if (data.success) {
-        const newMessage = {
-          id: Date.now().toString(),
-          body: messageText.trim(),
-          from: selectedChat.id,
-          author: "me",
-          timestamp: Date.now(),
-          sent: 1,
-        };
-        setMessages((prev) => [...prev, newMessage]);
         setMessageText("");
         setReplyTo(null);
         toast.success("Message sent!");
+        // Do NOT append the message here; let WebSocket handle it!
       } else toast.error("Failed to send message");
     } catch (error) {
       console.error("Send message error", error);
@@ -245,6 +237,16 @@ export default function ChatWindow({ selectedChat }) {
     setShowDeleteConfirm(false);
     setMsgIdToDelete(null);
   };
+
+  useEffect(() => {
+    function handleNewMessage(e) {
+      if (e.detail && e.detail.chatId === selectedChat?.id) {
+        setMessages((prev) => [...prev, e.detail]);
+      }
+    }
+    window.addEventListener("chat:new-message", handleNewMessage);
+    return () => window.removeEventListener("chat:new-message", handleNewMessage);
+  }, [selectedChat?.id]);
 
   return (
     <main className="w-[55%] p-4 bg-white flex flex-col justify-between border-r border-gray-300">

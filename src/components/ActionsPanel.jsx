@@ -40,7 +40,10 @@ export default function ActionsPanel() {
   const [progress, setProgress] = useState(0);
   const [summary, setSummary] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const base_api_url = process.env.BASE_API_URL;
+
+  var base_api_url = process.env.NEXT_PUBLIC_BASE_API_URL;
+  var base_api_port = process.env.NEXT_PUBLIC_BASE_API_PORT;
+  console.log("Base API URL:", base_api_url);
 
   // For custom field input
   const [customField, setCustomField] = useState("");
@@ -73,7 +76,7 @@ export default function ActionsPanel() {
     formData.append("fieldName", fieldName);
 
     try {
-      const res = await fetch("http://192.168.0.169:3002/upload-excel", { //need to change this URL to your backend endpoint
+      const res = await fetch(`${base_api_url}:${base_api_port}/upload-excel`, {
         body: formData,
       });
 
@@ -136,7 +139,7 @@ export default function ActionsPanel() {
       formData.append("chatId", JSON.stringify(extractedData));
       formData.append("caption", message);
 
-      const uploadRes = await fetch("http://192.168.0.169:4444/upload-media", {
+      const uploadRes = await fetch(`${base_api_url}:${base_api_port}/upload-media`, {
         method: "POST",
         body: formData,
       });
@@ -337,7 +340,7 @@ export default function ActionsPanel() {
             {loading && (
               <AiOutlineLoading3Quarters className="animate-spin text-xl" />
             )}
-            <span>{loading ? "Sending..." : "Send Bulk via WhatsApp"}</span>
+            <span>{loading ? "Sending..." : "Send Bulk Messages"}</span>
           </Button>
           {/* Progress Bar */}
           {loading && (
