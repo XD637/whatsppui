@@ -319,11 +319,10 @@ export default function ChatWindow({ selectedChat }) {
                     title={typeof p.id === "object" ? p.id._serialized : p.id}
                   >
                     {/* Show name if exists, else fallback to number */}
-                    {p.name
-                      ? p.name
-                      : (typeof p.id === "object" ? p.id._serialized : p.id)
-                          .replace(/^91/, "")
-                          .replace(/@c\.us$/, "")}
+                    {p.name ||
+  (typeof p.id === "object" ? p.id._serialized : p.id)
+    .replace(/^91/, "")
+    .replace(/@c\.us$/, "")}
                     {p.isSuperAdmin ? " 👑" : p.isAdmin ? " ⭐" : ""}
                   </span>
                 ))}

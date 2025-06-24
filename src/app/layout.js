@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "WhatsApp UI",
-  description: "WhatsApp UI Clone",
+  title: "WhatsApp",
+  description: "WhatsApp UI",
 };
 
 export default function RootLayout({ children }) {

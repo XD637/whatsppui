@@ -77,6 +77,7 @@ export default function ActionsPanel() {
 
     try {
       const res = await fetch(`${base_api_url}:${base_api_port}/upload-excel`, {
+        method: "POST", // <-- add this line
         body: formData,
       });
 

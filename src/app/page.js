@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import ChatSidebar from "@/components/ChatSidebar";
 import ChatWindow from "@/components/ChatWindow";
 import ActionsPanel from "@/components/ActionsPanel";
+import InboxPanel from "@/components/InboxPanel";
 import Navbar from "@/components/Navbar";
 import { useChat } from "./ChatContext";
 import { toast } from "sonner";
@@ -110,6 +111,23 @@ export default function Home() {
                 },
               });
 
+              // Show browser notification
+              if (Notification.permission === "granted") {
+                new Notification(`${group} - ${from}`, {
+                  body: toastDescription,
+                  icon: "/favicon.ico", // optional
+                });
+              } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(permission => {
+                  if (permission === "granted") {
+                    new Notification(`${group} - ${from}`, {
+                      body: toastDescription,
+                      icon: "/favicon.ico",
+                    });
+                  }
+                });
+              }
+
               // Save notification to DB
               console.log("Saving notification for userId:", userId);
               fetch("/api/notifications/save", {
@@ -148,6 +166,12 @@ export default function Home() {
     }
   }, [status, toasterReady, userId, setSelectedChat, socketRef]);
 
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
   if (status === "loading" || delayed) {
     return (
       <div className="flex items-center justify-center h-screen text-gray-600 text-lg">
@@ -164,7 +188,11 @@ export default function Home() {
       <div className="flex h-full">
         <ChatSidebar onSelectChat={setSelectedChat} />
         <ChatWindow selectedChat={selectedChat} />
-        {(session?.user?.role === "admin" || session?.user?.role === "user") && <ActionsPanel />}
+        {session?.user?.role === "admin" ? (
+          <ActionsPanel />
+        ) : (
+          <InboxPanel />
+        )}
       </div>
     </div>
   );

@@ -63,32 +63,21 @@ export default function Navbar({ setSelectedChat }) {
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-semibold">WhatsApp</h1>
         </div>
-        <div className="flex items-center gap-4">
-          {/* <button
-            className="relative"
-            onClick={() => setShowModal(true)}
-            title="Notifications"
-          >
-            <Bell className="w-6 h-6" />
-            {notifications.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-1.5 py-0.5">
-                {notifications.length}
-              </span>
-            )}
-          </button> */}
-          {/* Show username beside the logout button */}
-          {session?.user?.name && (
-            <span className="text-sm font-medium text-white opacity-80 mr-2">
-              {session.user.name}
-            </span>
-          )}
-          <button
-            onClick={() => signOut({ callbackUrl: "/auth/login" })}
-            className="bg-white text-[#075E54] px-3 py-1 rounded-full text-sm font-semibold hover:bg-green-100 transition"
-          >
-            Logout
-          </button>
-        </div>
+        <div className="flex items-center gap-3">
+  {session?.user?.name && (
+    <span className="text-sm font-semibold bg-white text-[#075E54] px-3 py-1 rounded-full shadow">
+      {session.user.name}
+    </span>
+  )}
+  <button
+    onClick={() => signOut({ callbackUrl: "/auth/login" })}
+    className="text-sm bg-white text-red-500 hover:text-red-600 px-3 py-1 rounded-full shadow-md font-semibold transition cursor-pointer flex items-center gap-1"
+  >
+    Logout
+  </button>
+</div>
+
+
       </nav>
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -136,3 +125,17 @@ export default function Navbar({ setSelectedChat }) {
     </>
   );
 }
+
+ {/* <button
+            className="relative"
+            onClick={() => setShowModal(true)}
+            title="Notifications"
+          >
+            <Bell className="w-6 h-6" />
+            {notifications.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-1.5 py-0.5">
+                {notifications.length}
+              </span>
+            )}
+          </button> */}
+          {/* Show username beside the logout button */}
