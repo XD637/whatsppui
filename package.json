@@ -1,12 +1,12 @@
 {
-  "name": "whatsppui",
+  "name": "whatsappui",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "app": "cross-env PORT=42300 next dev --turbopack",
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start",
+    "start": "cross-env PORT=42300 next start",
     "lint": "next lint"
   },
   "dependencies": {
