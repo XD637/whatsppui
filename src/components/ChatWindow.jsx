@@ -32,9 +32,10 @@ export default function ChatWindow({ selectedChat }) {
   const base_api_port = process.env.NEXT_PUBLIC_BASE_API_PORT;
 
   useEffect(() => {
+    setMessages([]); // <-- Clear messages immediately on chat change
+
     const fetchMessages = async () => {
       if (!selectedChat?.id) return;
-
       setLoading(true);
       try {
         const res = await fetch(
@@ -240,13 +241,17 @@ export default function ChatWindow({ selectedChat }) {
 
   useEffect(() => {
     function handleNewMessage(e) {
-      if (e.detail && e.detail.chatId === selectedChat?.id) {
+      if (
+        e.detail &&
+        e.detail.chatId === selectedChat?.id &&
+        !loading // Only append if not loading
+      ) {
         setMessages((prev) => [...prev, e.detail]);
       }
     }
     window.addEventListener("chat:new-message", handleNewMessage);
     return () => window.removeEventListener("chat:new-message", handleNewMessage);
-  }, [selectedChat?.id]);
+  }, [selectedChat?.id, loading]);
 
   return (
     <main className="w-[55%] p-4 bg-white flex flex-col justify-between border-r border-gray-300">
@@ -601,16 +606,29 @@ export default function ChatWindow({ selectedChat }) {
                     key={typeof p.id === "object" ? p.id._serialized : p.id}
                     className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 cursor-pointer"
                   >
-                    <span className="font-mono text-xs text-gray-700">
-                      {(typeof p.id === "object" ? p.id._serialized : p.id)
-                        .replace(/^91/, "")
-                        .replace(/@c\.us$/, "")}
-                    </span>
-                    {p.isSuperAdmin ? (
-                      <span title="Super Admin">👑</span>
-                    ) : p.isAdmin ? (
-                      <span title="Admin">⭐</span>
-                    ) : null}
+                    <span
+      className="font-mono text-xs text-gray-700"
+      title={
+        p.name
+          ? (typeof p.id === "object" ? p.id._serialized : p.id)
+              .replace(/^91/, "")
+              .replace(/@c\.us$/, "")
+          : undefined
+      }
+    >
+      {p.name
+        ? `${p.name} (${(typeof p.id === "object" ? p.id._serialized : p.id)
+            .replace(/^91/, "")
+            .replace(/@c\.us$/, "")})`
+        : (typeof p.id === "object" ? p.id._serialized : p.id)
+            .replace(/^91/, "")
+            .replace(/@c\.us$/, "")}
+    </span>
+    {p.isSuperAdmin ? (
+      <span title="Super Admin">👑</span>
+    ) : p.isAdmin ? (
+      <span title="Admin">⭐</span>
+    ) : null}
                   </div>
                 ))}
               </div>

@@ -191,7 +191,7 @@ export default function Home() {
         {session?.user?.role === "admin" ? (
           <ActionsPanel />
         ) : (
-          <InboxPanel />
+          <InboxPanel setSelectedChat={setSelectedChat} />
         )}
       </div>
     </div>

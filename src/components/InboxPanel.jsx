@@ -44,7 +44,7 @@ function shouldShowInInbox(msg) {
   return !isFromMe;
 }
 
-export default function InboxPanel() {
+export default function InboxPanel({ setSelectedChat }) {
   const socketRef = useWebSocket();
   const [inbox, setInbox] = useState([]);
 
@@ -107,7 +107,15 @@ export default function InboxPanel() {
             {inbox.map((msg, idx) => (
               <div
                 key={idx}
-                className="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative"
+                className="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative cursor-pointer hover:bg-[#e7fbe9] transition"
+                onClick={() => {
+                  setSelectedChat &&
+                    setSelectedChat({
+                      id: msg.chatId,
+                      name: msg.group || msg.from,
+                      isGroup: isGroup(msg),
+                    });
+                }}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-semibold text-[#075E54] truncate max-w-[140px]">
