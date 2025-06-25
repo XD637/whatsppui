@@ -129,11 +129,13 @@ export default function ChatSidebar({ onSelectChat, onIncomingMessage }) {
     return timeB - timeA;
   });
 
-  const filteredChats = sortedChats.filter((chat) => {
-    const name = (chat.name || "").toLowerCase().trim();
-    const searchTerm = search.toLowerCase().trim();
-    return searchTerm.split(/\s+/).every((word) => name.includes(word));
-  });
+  const filteredChats = sortedChats
+    .filter((chat) => chat.id !== "status@broadcast") // <-- Hide WhatsApp Status
+    .filter((chat) => {
+      const name = (chat.name || "").toLowerCase().trim();
+      const searchTerm = search.toLowerCase().trim();
+      return searchTerm.split(/\s+/).every((word) => name.includes(word));
+    });
 
   return (
     <aside className="w-[20%] border-r border-gray-300 bg-white flex flex-col">

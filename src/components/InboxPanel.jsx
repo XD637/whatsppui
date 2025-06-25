@@ -26,6 +26,9 @@ function getSenderFromGroupMessageId(messageId) {
 
 // Final filtering logic
 function shouldShowInInbox(msg) {
+  // Exclude WhatsApp Status
+  if (msg.chatId === "status@broadcast") return false;
+
   const group = isGroup(msg);
 
   if (!group) return true; // Always show direct messages
