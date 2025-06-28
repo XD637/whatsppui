@@ -131,7 +131,10 @@ export default function InboxPanel({ setSelectedChat }) {
                     variant="ghost"
                     size="icon"
                     className="ml-2 text-gray-400 hover:text-gray-500"
-                    onClick={() => handleRemove(idx)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevents opening the chat
+                      handleRemove(idx);
+                    }}
                     title="Remove"
                   >
                     <X size={16} />
