@@ -189,7 +189,9 @@ export default function ChatSidebar({ onSelectChat, onIncomingMessage }) {
 
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-gray-900 truncate">
-                  {chat.name || chat.id}
+                  {chat.name
+                    ? chat.name
+                    : chat.id.replace(/^91/, "").replace(/@c\.us$/, "")}
                 </div>
                 <div className="text-xs truncate text-[#075E54] font-semibold">
                   {previewMsg}

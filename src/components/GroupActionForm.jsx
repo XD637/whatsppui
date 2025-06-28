@@ -78,12 +78,28 @@ export default function GroupActionForm({ action, groupInfo, onClose, refresh })
 
   // For remove/promote/demote, show participant picker
   if (["remove", "promote", "demote"].includes(action)) {
+    // Filter participants for the action
+    const filteredParticipants = groupInfo.participants
+      ?.filter((p) => {
+        if (p.isSuperAdmin) return false;
+        if (action === "promote" && p.isAdmin) return false;
+        if (action === "demote" && !p.isAdmin) return false; // Only show admins for Remove Admin
+        return true;
+      });
+
     return (
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="max-h-48 overflow-y-auto border rounded p-2 bg-gray-50">
-          {groupInfo.participants
-            ?.filter((p) => !p.isSuperAdmin)
-            .map((p) => {
+          {filteredParticipants.length === 0 ? (
+            <div className="text-xs text-gray-500 text-center py-4">
+              {action === "promote"
+                ? "All participants are already admins."
+                : action === "demote"
+                ? "No admins to remove."
+                : "No participants found."}
+            </div>
+          ) : (
+            filteredParticipants.map((p) => {
               const id =
                 typeof p.id === "object" ? p.id._serialized : p.id;
               const label =
@@ -113,12 +129,13 @@ export default function GroupActionForm({ action, groupInfo, onClose, refresh })
                   </span>
                 </label>
               );
-            })}
+            })
+          )}
         </div>
         <Button
           type="submit"
           className="w-full rounded-full bg-[#25D366] hover:bg-[#20bd5c] text-white font-bold"
-          disabled={loading || selected.length === 0}
+          disabled={loading || selected.length === 0 || filteredParticipants.length === 0}
         >
           {loading ? "Processing..." : "Submit"}
         </Button>

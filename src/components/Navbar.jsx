@@ -67,7 +67,7 @@ export default function Navbar({ setSelectedChat }) {
         </div>
         <div className="flex items-center gap-3">
           <button
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#25D366] hover:bg-[#20bd5c] text-white font-semibold text-sm shadow transition"
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white hover:bg-gray-100 text-[#075E54] cursor-pointer font-semibold text-sm shadow transition"
             onClick={() => setShowGroupModal(true)}
             title="Create Group"
             style={{ minWidth: 0 }}
@@ -94,37 +94,37 @@ export default function Navbar({ setSelectedChat }) {
       )}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
+          <div className="bg-white rounded-lg shadow-lg max-w-xs w-full p-4 relative">
             <button
-              className="absolute top-2 right-3 text-gray-400 hover:text-gray-700 text-xl"
+              className="absolute top-1.5 right-2 text-gray-400 hover:text-gray-700 text-lg"
               onClick={() => setShowModal(false)}
               title="Close"
             >
               ×
             </button>
-            <h2 className="text-lg font-bold mb-4 text-[#075E54]">
+            <h2 className="text-base font-bold mb-3 text-[#075E54]">
               Notifications
             </h2>
             <button
-              className="mb-4  text-xs text-black underline  cursor-pointer hover:text-[#075E54]"
+              className="mb-3 text-xs text-black underline cursor-pointer hover:text-[#075E54]"
               onClick={handleClear}
               disabled={notifications.length === 0}
             >
               Clear All
             </button>
             {notifications.length === 0 ? (
-              <div className="text-gray-500 text-sm text-center">
+              <div className="text-gray-500 text-xs text-center">
                 No notifications yet.
               </div>
             ) : (
-              <ul className="space-y-3 max-h-72 overflow-y-auto">
+              <ul className="space-y-2 max-h-48 overflow-y-auto">
                 {notifications.map((n, i) => (
                   <li
                     key={n.id || i}
-                    className="border-b pb-2 last:border-b-0 cursor-pointer hover:bg-gray-100"
+                    className="border-b pb-1 last:border-b-0 cursor-pointer hover:bg-gray-100"
                     onClick={() => handleNotificationClick(n)}
                   >
-                    <div className="font-semibold">{n.title}</div>
+                    <div className="font-semibold text-sm">{n.title}</div>
                     <div className="text-xs text-gray-600 whitespace-pre-line">
                       {n.description}
                     </div>

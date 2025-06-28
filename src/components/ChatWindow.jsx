@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { X } from "lucide-react";
-import { Reply as ReplyIcon } from "lucide-react";
+import { Reply as ReplyIcon, MoreVertical } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,13 @@ import {
 } from "@/components/ui/dialog";
 import Image from "next/image";
 import GroupActionForm from "./GroupActionForm";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 export default function ChatWindow({ selectedChat }) {
   const [messages, setMessages] = useState([]);
@@ -44,6 +51,7 @@ export default function ChatWindow({ selectedChat }) {
   const [groupInfo, setGroupInfo] = useState(null);
   const [showAllParticipants, setShowAllParticipants] = useState(false);
   const [selectedMsgId, setSelectedMsgId] = useState(null);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
 
   const base_api_url = process.env.NEXT_PUBLIC_BASE_API_URL;
   const base_api_port = process.env.NEXT_PUBLIC_BASE_API_PORT;
@@ -282,9 +290,58 @@ export default function ChatWindow({ selectedChat }) {
 
   return (
     <main className="w-[55%] p-4 bg-white flex flex-col justify-between border-r border-gray-300">
-      {/* Always show the header */}
-      <div className="text-lg font-bold border-b pb-6 mb-6 text-[#075E54] min-h-[40px] flex items-center">
-        {selectedChat?.name || "Select a chat"}
+      <div className="text-lg font-bold border-b pb-6 mb-6 text-[#075E54] min-h-[40px] flex items-center justify-between">
+        <div className="flex items-center gap-2 cursor-pointer select-none"
+          onClick={() => setShowGroupInfo((v) => !v)}
+          title="Show group info"
+        >
+          <span>{selectedChat?.name || "Select a chat"}</span>
+          {groupInfo && (
+            showGroupInfo ? (
+              <ChevronUp className="w-5 h-5 text-[#075E54]" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-[#075E54]" />
+            )
+          )}
+        </div>
+        {groupInfo && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="ml-2 p-2 rounded-full hover:bg-gray-100 transition"
+                title="Group Actions"
+              >
+                <MoreVertical className="w-6 h-6 text-[#075E54]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+      className="
+        w-56
+        transition-all duration-200 ease-in-out
+        data-[state=open]:opacity-100 data-[state=open]:translate-y-0
+        data-[state=closed]:opacity-0 data-[state=closed]:-translate-y-2
+      "
+      sideOffset={8}
+      align="end"
+    >
+      <DropdownMenuItem
+        onClick={() => setGroupActionModal({ action: "add", open: true })}
+      >
+        Add Members
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={() => setGroupActionModal({ action: "promote", open: true })}
+      >
+        Make Admin
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={() => setGroupActionModal({ action: "demote", open: true })}
+      >
+        Remove Admin
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       {!selectedChat?.id ? (
         <div className="flex flex-1 flex-col items-center justify-start pt-16 h-full">
@@ -310,7 +367,7 @@ export default function ChatWindow({ selectedChat }) {
         </div>
       ) : (
         <>
-          {groupInfo && (
+          {groupInfo && showGroupInfo && (
             <div className="mb-4 p-4 rounded-lg bg-[#f7fafc] border border-[#e2e8f0] shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-lg font-semibold text-[#075E54]">
@@ -432,18 +489,37 @@ export default function ChatWindow({ selectedChat }) {
                         cursor-pointer
                         ${selectedMsgId === msg.id ? "ring-2 ring-red-400" : ""}
                       `}
-                      onContextMenu={(e) => handleContextMenu(e, msg)}
                       onClick={() => setSelectedMsgId(msg.id === selectedMsgId ? null : msg.id)}
                     >
-                      {/* Reply icon top right */}
-                      <button
-                        onClick={() => setReplyTo(msg)}
-                        className="absolute -top-3 right-0 opacity-0 group-hover:opacity-100 transition bg-white rounded-full shadow p-1 cursor-pointer"
-                        title="Reply"
-                        style={{ zIndex: 2 }}
-                      >
-                        <ReplyIcon className="w-4 h-4 text-green-600" />
-                      </button>
+                      {/* 3-dots menu top right */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="absolute -top-3 right-0 opacity-0 group-hover:opacity-100 transition bg-white rounded-full shadow p-1 cursor-pointer"
+                            style={{ zIndex: 2 }}
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <MoreVertical className="w-4 h-4 text-gray-600" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-32" align="end" sideOffset={4}>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setReplyTo(msg);
+                            }}
+                          >
+                            Reply
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setMsgIdToDelete(msg.id);
+                              setShowDeleteConfirm(true);
+                            }}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <div className="font-semibold text-xs mb-1 text-gray-700">
                         {isSender
                           ? "You"
@@ -496,52 +572,46 @@ export default function ChatWindow({ selectedChat }) {
                           </span>
                         </div>
                       )}
-                      <div>{msg.body || <i>[Media message]</i>}</div>
-                      {/* Render media if exists */}
-                      {msg.hasMedia && msg.media && msg.media.data && (
-                        <div className="my-2">
-                          {msg.media.mimetype.startsWith("image/") ? (
-                            <img
-                              src={`data:${msg.media.mimetype};base64,${msg.media.data}`}
-                              alt={msg.media.filename || "media"}
-                              className="max-w-xs max-h-60 rounded shadow"
-                            />
-                          ) : msg.media.mimetype.startsWith("video/") ? (
-                            <video
-                              controls
-                              className="max-w-xs max-h-60 rounded shadow"
-                              src={`data:${msg.media.mimetype};base64,${msg.media.data}`}
-                            />
-                          ) : (
-                            <a
-                              href={`data:${msg.media.mimetype};base64,${msg.media.data}`}
-                              download={msg.media.filename || "file"}
-                              className="text-blue-600 underline"
-                            >
-                              {msg.media.filename || "Download file"}
-                            </a>
-                          )}
-                        </div>
-                      )}
+                      <div>
+                        {/* If there is media, wrap text and image in a flex container */}
+                        {msg.hasMedia && msg.media && msg.media.data ? (
+                          <div className="flex flex-col max-w-xs">
+                            {/* Media */}
+                            {msg.media.mimetype.startsWith("image/") ? (
+                              <img
+                                src={`data:${msg.media.mimetype};base64,${msg.media.data}`}
+                                alt={msg.media.filename || "media"}
+                                className="max-w-xs max-h-60 rounded shadow mb-2"
+                              />
+                            ) : msg.media.mimetype.startsWith("video/") ? (
+                              <video
+                                controls
+                                className="max-w-xs max-h-60 rounded shadow mb-2"
+                                src={`data:${msg.media.mimetype};base64,${msg.media.data}`}
+                              />
+                            ) : (
+                              <a
+                                href={`data:${msg.media.mimetype};base64,${msg.media.data}`}
+                                download={msg.media.filename || "file"}
+                                className="text-blue-600 underline mb-2"
+                              >
+                                {msg.media.filename || "Download file"}
+                              </a>
+                            )}
+                            {/* Message text, wrapped to image width */}
+                            <div className="break-words max-w-xs">{msg.body || <i>[Media message]</i>}</div>
+                          </div>
+                        ) : (
+                          // No media, just text
+                          <div className="break-words max-w-xs">{msg.body || <i>[Media message]</i>}</div>
+                        )}
+                      </div>
                       <div className="text-[11px] text-gray-500 mt-1 text-right ">
                         {formatTime(msg.timestamp)}
                         {msg.failed && (
                           <span className="text-gray-500 text-xs ml-2">Failed</span>
                         )}
                       </div>
-                      {/* Delete button, visible if selected */}
-                      {selectedMsgId === msg.id && (
-                        <button
-                          className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded shadow hover:bg-red-600 z-10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMsgIdToDelete(msg.id);
-                            setShowDeleteConfirm(true);
-                          }}
-                        >
-                          Delete
-                        </button>
-                      )}
                     </div>
                   );
                 })}
@@ -735,7 +805,6 @@ export default function ChatWindow({ selectedChat }) {
                   action={groupActionModal.action}
                   groupInfo={groupInfo}
                   onClose={() => setGroupActionModal({ action: null, open: false })}
-                  refresh={fetchMessages}
                 />
               </DialogContent>
             </Dialog>
