@@ -52,6 +52,8 @@ export default function ChatWindow({ selectedChat }) {
   const [showAllParticipants, setShowAllParticipants] = useState(false);
   const [selectedMsgId, setSelectedMsgId] = useState(null);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const prevMessagesLength = useRef(0);
+  const [lastAction, setLastAction] = useState(null); // "add" | "delete" | null
 
   const base_api_url = process.env.NEXT_PUBLIC_BASE_API_URL;
   const base_api_port = process.env.NEXT_PUBLIC_BASE_API_PORT;
@@ -81,11 +83,22 @@ export default function ChatWindow({ selectedChat }) {
   }, [selectedChat]);
 
   useEffect(() => {
-    if (messagesEndRef.current) {
-      const behavior = firstRenderRef.current ? "auto" : "smooth";
-      messagesEndRef.current.scrollIntoView({ behavior });
-      firstRenderRef.current = false;
+    if (
+      (messages.length > prevMessagesLength.current && lastAction !== "delete") ||
+      firstRenderRef.current
+    ) {
+      if (messagesEndRef.current) {
+        const behavior = firstRenderRef.current ? "auto" : "smooth";
+        messagesEndRef.current.scrollIntoView({ behavior });
+        firstRenderRef.current = false;
+      }
     }
+
+    if (lastAction !== "delete") {
+      prevMessagesLength.current = messages.length;
+    }
+
+    if (lastAction !== null) setLastAction(null); // Only reset if needed
   }, [messages, selectedChat]);
 
   useEffect(() => {
@@ -249,6 +262,11 @@ export default function ChatWindow({ selectedChat }) {
   };
 
   const handleDeleteMessage = async (messageId) => {
+    if (!messageId) {
+      setShowDeleteConfirm(false);
+      setMsgIdToDelete(null);
+      return;
+    }
     try {
       const res = await fetch(
         `${base_api_url}:${base_api_port}/api/delete-message`,
@@ -261,7 +279,9 @@ export default function ChatWindow({ selectedChat }) {
       const data = await res.json();
       if (data.success) {
         setMessages((prev) => prev.filter((m) => m.id !== messageId));
-        setSelectedMsgId(null);
+        setSelectedMsgId((prev) => (prev === messageId ? null : prev));
+        setReplyTo((prev) => (prev && prev.id === messageId ? null : prev));
+        setLastAction("delete"); // <-- add this
         toast.success("Message deleted!");
       } else {
         toast.error(data.error || "Failed to delete message");
@@ -296,13 +316,12 @@ export default function ChatWindow({ selectedChat }) {
           title="Show group info"
         >
           <span>{selectedChat?.name || "Select a chat"}</span>
-          {groupInfo && (
-            showGroupInfo ? (
+          {groupInfo &&
+            (showGroupInfo ? (
               <ChevronUp className="w-5 h-5 text-[#075E54]" />
             ) : (
               <ChevronDown className="w-5 h-5 text-[#075E54]" />
-            )
-          )}
+            ))}
         </div>
         {groupInfo && (
           <DropdownMenu>
@@ -316,25 +335,40 @@ export default function ChatWindow({ selectedChat }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent
       className="
-        w-56
-        transition-all duration-200 ease-in-out
-        data-[state=open]:opacity-100 data-[state=open]:translate-y-0
-        data-[state=closed]:opacity-0 data-[state=closed]:-translate-y-2
+        w-48
+        rounded-lg
+        shadow-lg
+        border border-gray-200
+        bg-white
+        py-2
+        px-0
+        text-sm
+        min-w-[160px]
+        ring-1 ring-black/5
       "
       sideOffset={8}
       align="end"
     >
       <DropdownMenuItem
+        className="px-4 py-2 hover:bg-[#f0f0f0] text-gray-800 cursor-pointer transition-colors"
         onClick={() => setGroupActionModal({ action: "add", open: true })}
       >
         Add Members
       </DropdownMenuItem>
       <DropdownMenuItem
+        className="px-4 py-2 hover:bg-[#f0f0f0] text-gray-800 cursor-pointer transition-colors"
+        onClick={() => setGroupActionModal({ action: "remove", open: true })}
+      >
+        Remove Members
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        className="px-4 py-2 hover:bg-[#f0f0f0] text-gray-800 cursor-pointer transition-colors"
         onClick={() => setGroupActionModal({ action: "promote", open: true })}
       >
         Make Admin
       </DropdownMenuItem>
       <DropdownMenuItem
+        className="px-4 py-2 hover:bg-[#f0f0f0] text-gray-800 cursor-pointer transition-colors"
         onClick={() => setGroupActionModal({ action: "demote", open: true })}
       >
         Remove Admin
@@ -430,36 +464,6 @@ export default function ChatWindow({ selectedChat }) {
                   </button>
                 )}
               </div>
-              <div className="flex gap-2 mt-4 flex-wrap">
-                <Button
-                  size="sm"
-                  className="bg-[#25D366] hover:bg-[#20bd5c] text-white rounded-full text-xs px-2 py-1"
-                  onClick={() => setGroupActionModal({ action: "add", open: true })}
-                >
-                  Add Members
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-red-500 hover:bg-red-600 text-white rounded-full text-xs px-2 py-1"
-                  onClick={() => setGroupActionModal({ action: "remove", open: true })}
-                >
-                  Remove Members
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-blue-500 hover:bg-blue-600 text-white rounded-full text-xs px-2 py-1"
-                  onClick={() => setGroupActionModal({ action: "promote", open: true })}
-                >
-                  Make Admin
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-yellow-500 hover:bg-yellow-600 text-white rounded-full text-xs px-2 py-1"
-                  onClick={() => setGroupActionModal({ action: "demote", open: true })}
-                >
-                  Remove Admin
-                </Button>
-              </div>
             </div>
           )}
 
@@ -487,7 +491,6 @@ export default function ChatWindow({ selectedChat }) {
                         ${highlightedMsgId === msg.id ? "ring-2 ring-green-400" : ""}
                         my-1 mx-4
                         cursor-pointer
-                        ${selectedMsgId === msg.id ? "ring-2 ring-red-400" : ""}
                       `}
                       onClick={() => setSelectedMsgId(msg.id === selectedMsgId ? null : msg.id)}
                     >
