@@ -7,9 +7,20 @@ import { Plus } from "lucide-react";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { X } from "lucide-react";
 import { Reply as ReplyIcon } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Dialog as ConfirmDialog, DialogContent as ConfirmDialogContent, DialogHeader as ConfirmDialogHeader, DialogTitle as ConfirmDialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Dialog as ConfirmDialog,
+  DialogContent as ConfirmDialogContent,
+  DialogHeader as ConfirmDialogHeader,
+  DialogTitle as ConfirmDialogTitle,
+} from "@/components/ui/dialog";
 import Image from "next/image";
+import GroupActionForm from "./GroupActionForm";
 
 export default function ChatWindow({ selectedChat }) {
   const [messages, setMessages] = useState([]);
@@ -18,7 +29,13 @@ export default function ChatWindow({ selectedChat }) {
   const [mediaFile, setMediaFile] = useState(null);
   const [replyTo, setReplyTo] = useState(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState(null);
-  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, msg: null });
+  const [groupActionModal, setGroupActionModal] = useState({ action: null, open: false });
+  const [contextMenu, setContextMenu] = useState({
+    visible: false,
+    x: 0,
+    y: 0,
+    msg: null,
+  });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [msgIdToDelete, setMsgIdToDelete] = useState(null);
   const fileInputRef = useRef();
@@ -31,28 +48,27 @@ export default function ChatWindow({ selectedChat }) {
   const base_api_url = process.env.NEXT_PUBLIC_BASE_API_URL;
   const base_api_port = process.env.NEXT_PUBLIC_BASE_API_PORT;
 
+  const fetchMessages = async () => {
+    if (!selectedChat?.id) return;
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${base_api_url}:${base_api_port}/api/chat-messages?chatId=${encodeURIComponent(
+          selectedChat.id
+        )}`
+      );
+      const data = await res.json();
+      setMessages(data.success ? data.messages : []);
+    } catch (err) {
+      console.error("Failed to fetch messages", err);
+      setMessages([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setMessages([]); // <-- Clear messages immediately on chat change
-
-    const fetchMessages = async () => {
-      if (!selectedChat?.id) return;
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `${base_api_url}:${base_api_port}/api/chat-messages?chatId=${encodeURIComponent(
-            selectedChat.id
-          )}`
-        );
-        const data = await res.json();
-        setMessages(data.success ? data.messages : []);
-      } catch (err) {
-        console.error("Failed to fetch messages", err);
-        setMessages([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+    setMessages([]);
     fetchMessages();
   }, [selectedChat]);
 
@@ -71,9 +87,13 @@ export default function ChatWindow({ selectedChat }) {
   useEffect(() => {
     setGroupInfo(null);
     if (selectedChat?.id && selectedChat?.id.endsWith("@g.us")) {
-      fetch(`${base_api_url}:${base_api_port}/api/group-info?groupId=${encodeURIComponent(selectedChat.id)}`)
-        .then(res => res.json())
-        .then(data => {
+      fetch(
+        `${base_api_url}:${base_api_port}/api/group-info?groupId=${encodeURIComponent(
+          selectedChat.id
+        )}`
+      )
+        .then((res) => res.json())
+        .then((data) => {
           if (data.success) setGroupInfo(data.group);
         })
         .catch(() => setGroupInfo(null));
@@ -83,7 +103,10 @@ export default function ChatWindow({ selectedChat }) {
   const formatTime = (timestamp) => {
     if (!timestamp) return "";
     const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const handleMediaChange = (e) => {
@@ -219,11 +242,14 @@ export default function ChatWindow({ selectedChat }) {
 
   const handleDeleteMessage = async (messageId) => {
     try {
-      const res = await fetch(`${base_api_url}:${base_api_port}/api/delete-message`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageId }),
-      });
+      const res = await fetch(
+        `${base_api_url}:${base_api_port}/api/delete-message`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messageId }),
+        }
+      );
       const data = await res.json();
       if (data.success) {
         setMessages((prev) => prev.filter((m) => m.id !== messageId));
@@ -250,7 +276,8 @@ export default function ChatWindow({ selectedChat }) {
       }
     }
     window.addEventListener("chat:new-message", handleNewMessage);
-    return () => window.removeEventListener("chat:new-message", handleNewMessage);
+    return () =>
+      window.removeEventListener("chat:new-message", handleNewMessage);
   }, [selectedChat?.id, loading]);
 
   return (
@@ -286,12 +313,17 @@ export default function ChatWindow({ selectedChat }) {
           {groupInfo && (
             <div className="mb-4 p-4 rounded-lg bg-[#f7fafc] border border-[#e2e8f0] shadow-sm">
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-lg font-semibold text-[#075E54]">{groupInfo.name}</span>
-                <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">Group</span>
+                <span className="text-lg font-semibold text-[#075E54]">
+                  {groupInfo.name}
+                </span>
+                <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
+                  Group
+                </span>
               </div>
               {groupInfo.description && (
                 <div className="text-xs text-gray-600 mb-2">
-                  <span className="font-medium">Description:</span> {groupInfo.description}
+                  <span className="font-medium">Description:</span>{" "}
+                  {groupInfo.description}
                 </div>
               )}
               <div className="flex flex-wrap gap-2 text-xs text-gray-700">
@@ -325,9 +357,9 @@ export default function ChatWindow({ selectedChat }) {
                   >
                     {/* Show name if exists, else fallback to number */}
                     {p.name ||
-  (typeof p.id === "object" ? p.id._serialized : p.id)
-    .replace(/^91/, "")
-    .replace(/@c\.us$/, "")}
+                      (typeof p.id === "object" ? p.id._serialized : p.id)
+                        .replace(/^91/, "")
+                        .replace(/@c\.us$/, "")}
                     {p.isSuperAdmin ? " 👑" : p.isAdmin ? " ⭐" : ""}
                   </span>
                 ))}
@@ -340,6 +372,36 @@ export default function ChatWindow({ selectedChat }) {
                     View all ({groupInfo.participants.length})
                   </button>
                 )}
+              </div>
+              <div className="flex gap-2 mt-4 flex-wrap">
+                <Button
+                  size="sm"
+                  className="bg-[#25D366] hover:bg-[#20bd5c] text-white rounded-full text-xs px-2 py-1"
+                  onClick={() => setGroupActionModal({ action: "add", open: true })}
+                >
+                  Add Members
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-red-500 hover:bg-red-600 text-white rounded-full text-xs px-2 py-1"
+                  onClick={() => setGroupActionModal({ action: "remove", open: true })}
+                >
+                  Remove Members
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-blue-500 hover:bg-blue-600 text-white rounded-full text-xs px-2 py-1"
+                  onClick={() => setGroupActionModal({ action: "promote", open: true })}
+                >
+                  Make Admin
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white rounded-full text-xs px-2 py-1"
+                  onClick={() => setGroupActionModal({ action: "demote", open: true })}
+                >
+                  Remove Admin
+                </Button>
               </div>
             </div>
           )}
@@ -504,7 +566,7 @@ export default function ChatWindow({ selectedChat }) {
                 </div>
               </div>
               <button
-                onClick={e => {
+                onClick={(e) => {
                   e.stopPropagation();
                   setReplyTo(null);
                 }}
@@ -607,28 +669,21 @@ export default function ChatWindow({ selectedChat }) {
                     className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 cursor-pointer"
                   >
                     <span
-      className="font-mono text-xs text-gray-700"
-      title={
-        p.name
-          ? (typeof p.id === "object" ? p.id._serialized : p.id)
-              .replace(/^91/, "")
-              .replace(/@c\.us$/, "")
-          : undefined
-      }
-    >
-      {p.name
-        ? `${p.name} (${(typeof p.id === "object" ? p.id._serialized : p.id)
-            .replace(/^91/, "")
-            .replace(/@c\.us$/, "")})`
-        : (typeof p.id === "object" ? p.id._serialized : p.id)
-            .replace(/^91/, "")
-            .replace(/@c\.us$/, "")}
-    </span>
-    {p.isSuperAdmin ? (
-      <span title="Super Admin">👑</span>
-    ) : p.isAdmin ? (
-      <span title="Admin">⭐</span>
-    ) : null}
+                      className="font-mono text-xs text-gray-700"
+                      title={
+                        (typeof p.id === "object" ? p.id._serialized : p.id)
+                          .replace(/@c\.us$/, "")
+                      }
+                    >
+                      {p.name
+                        ? `${p.name} (${(typeof p.id === "object" ? p.id._serialized : p.id).replace(/@c\.us$/, "")})`
+                        : (typeof p.id === "object" ? p.id._serialized : p.id).replace(/@c\.us$/, "")}
+                    </span>
+                    {p.isSuperAdmin ? (
+                      <span title="Super Admin">👑</span>
+                    ) : p.isAdmin ? (
+                      <span title="Admin">⭐</span>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -663,6 +718,28 @@ export default function ChatWindow({ selectedChat }) {
               </div>
             </ConfirmDialogContent>
           </ConfirmDialog>
+
+          {/* Group Action Form - Add/Remove Participants */}
+          {groupInfo && (
+            <Dialog open={groupActionModal.open} onOpenChange={() => setGroupActionModal({ action: null, open: false })}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    {groupActionModal.action === "add" && "Add Members"}
+                    {groupActionModal.action === "remove" && "Remove Members"}
+                    {groupActionModal.action === "promote" && "Make Admin"}
+                    {groupActionModal.action === "demote" && "Remove Admin"}
+                  </DialogTitle>
+                </DialogHeader>
+                <GroupActionForm
+                  action={groupActionModal.action}
+                  groupInfo={groupInfo}
+                  onClose={() => setGroupActionModal({ action: null, open: false })}
+                  refresh={fetchMessages}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </>
       )}
     </main>

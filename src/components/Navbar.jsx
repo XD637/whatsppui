@@ -2,13 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
-import { Bell } from "lucide-react";
+import { Bell, Plus } from "lucide-react";
 import { useSession } from "next-auth/react";
+import GroupManager from "./GroupManager"; // Import the new component
 
 export default function Navbar({ setSelectedChat }) {
   const { data: session } = useSession();
   const [showModal, setShowModal] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [showGroupModal, setShowGroupModal] = useState(false);
 
   useEffect(() => {
     if (showModal && session?.user?.id) {
@@ -64,21 +66,32 @@ export default function Navbar({ setSelectedChat }) {
           <h1 className="text-lg font-semibold">WhatsApp</h1>
         </div>
         <div className="flex items-center gap-3">
-  {session?.user?.name && (
-    <span className="text-sm font-semibold bg-white text-[#075E54] px-3 py-1 rounded-full shadow">
-      {session.user.name}
-    </span>
-  )}
-  <button
-    onClick={() => signOut({ callbackUrl: "/auth/login" })}
-    className="text-sm bg-white text-red-500 hover:text-red-600 px-3 py-1 rounded-full shadow-md font-semibold transition cursor-pointer flex items-center gap-1"
-  >
-    Logout
-  </button>
-</div>
+          <button
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#25D366] hover:bg-[#20bd5c] text-white font-semibold text-sm shadow transition"
+            onClick={() => setShowGroupModal(true)}
+            title="Create Group"
+            style={{ minWidth: 0 }}
+          >
+            <Plus size={18} />
+            <span className="hidden sm:inline">Create Group</span>
+          </button>
 
-
+          {session?.user?.name && (
+            <span className="text-sm font-semibold bg-white text-[#075E54] px-3 py-1 rounded-full shadow">
+              {session.user.name}
+            </span>
+          )}
+          <button
+            onClick={() => signOut({ callbackUrl: "/auth/login" })}
+            className="text-sm bg-white text-red-500 hover:text-red-600 px-3 py-1 rounded-full shadow-md font-semibold transition cursor-pointer flex items-center gap-1"
+          >
+            Logout
+          </button>
+        </div>
       </nav>
+      {showGroupModal && (
+        <GroupManager onClose={() => setShowGroupModal(false)} />
+      )}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
@@ -126,7 +139,7 @@ export default function Navbar({ setSelectedChat }) {
   );
 }
 
- {/* <button
+{/* <button
             className="relative"
             onClick={() => setShowModal(true)}
             title="Notifications"
