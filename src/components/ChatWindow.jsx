@@ -7,18 +7,6 @@ import { Plus } from "lucide-react";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { X } from "lucide-react";
 import { Reply as ReplyIcon, MoreVertical } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Dialog as ConfirmDialog,
-  DialogContent as ConfirmDialogContent,
-  DialogHeader as ConfirmDialogHeader,
-  DialogTitle as ConfirmDialogTitle,
-} from "@/components/ui/dialog";
 import Image from "next/image";
 import GroupActionForm from "./GroupActionForm";
 import {
@@ -54,6 +42,7 @@ export default function ChatWindow({ selectedChat }) {
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const prevMessagesLength = useRef(0);
   const [lastAction, setLastAction] = useState(null); // "add" | "delete" | null
+  const [isAnyModalOpen, setIsAnyModalOpen] = useState(false); // Add this state variable
 
   const base_api_url = process.env.NEXT_PUBLIC_BASE_API_URL;
   const base_api_port = process.env.NEXT_PUBLIC_BASE_API_PORT;
@@ -308,6 +297,44 @@ export default function ChatWindow({ selectedChat }) {
       window.removeEventListener("chat:new-message", handleNewMessage);
   }, [selectedChat?.id, loading]);
 
+  // When opening delete confirm
+  const openDeleteConfirm = (msgId) => {
+    setShowDeleteConfirm(true);
+    setMsgIdToDelete(msgId);
+    setGroupActionModal({ action: null, open: false }); // close group modal if open
+  };
+
+  // When opening group action modal
+  const openGroupActionModal = (action) => {
+    if (isAnyModalOpen) return; // Prevent opening if another modal is open
+    setGroupActionModal({ action, open: true });
+    setIsAnyModalOpen(true);
+    setShowDeleteConfirm(false); // close delete confirm if open
+  };
+
+  const safeOpenGroupModal = (action) => {
+    setGroupActionModal({ action, open: true });
+    setShowDeleteConfirm(false); // close delete confirm if open
+  };
+
+  const safeCloseGroupModal = () => {
+    setGroupActionModal({ action: null, open: false });
+  };
+
+  const safeOpenDeleteConfirm = (msgId) => {
+    if (isAnyModalOpen) return; // Prevent opening if another modal is open
+    setShowDeleteConfirm(true);
+    setMsgIdToDelete(msgId);
+    setIsAnyModalOpen(true);
+    setGroupActionModal({ action: null, open: false }); // close group modal if open
+  };
+
+  const safeCloseDeleteConfirm = () => {
+    setShowDeleteConfirm(false);
+    setMsgIdToDelete(null);
+    setIsAnyModalOpen(false);
+  };
+
   return (
     <main className="w-[55%] p-4 bg-white flex flex-col justify-between border-r border-gray-300">
       <div className="text-lg font-bold border-b pb-6 mb-6 text-[#075E54] min-h-[40px] flex items-center justify-between">
@@ -351,25 +378,25 @@ export default function ChatWindow({ selectedChat }) {
     >
       <DropdownMenuItem
         className="px-4 py-2 hover:bg-[#f0f0f0] text-gray-800 cursor-pointer transition-colors"
-        onClick={() => setGroupActionModal({ action: "add", open: true })}
+        onClick={() => safeOpenGroupModal("add")}
       >
         Add Members
       </DropdownMenuItem>
       <DropdownMenuItem
         className="px-4 py-2 hover:bg-[#f0f0f0] text-gray-800 cursor-pointer transition-colors"
-        onClick={() => setGroupActionModal({ action: "remove", open: true })}
+        onClick={() => safeOpenGroupModal("remove")}
       >
         Remove Members
       </DropdownMenuItem>
       <DropdownMenuItem
         className="px-4 py-2 hover:bg-[#f0f0f0] text-gray-800 cursor-pointer transition-colors"
-        onClick={() => setGroupActionModal({ action: "promote", open: true })}
+        onClick={() => safeOpenGroupModal("promote")}
       >
         Make Admin
       </DropdownMenuItem>
       <DropdownMenuItem
         className="px-4 py-2 hover:bg-[#f0f0f0] text-gray-800 cursor-pointer transition-colors"
-        onClick={() => setGroupActionModal({ action: "demote", open: true })}
+        onClick={() => safeOpenGroupModal("demote")}
       >
         Remove Admin
       </DropdownMenuItem>
@@ -515,8 +542,7 @@ export default function ChatWindow({ selectedChat }) {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => {
-                              setMsgIdToDelete(msg.id);
-                              setShowDeleteConfirm(true);
+                              openDeleteConfirm(msg.id);
                             }}
                           >
                             Delete
@@ -730,88 +756,129 @@ export default function ChatWindow({ selectedChat }) {
             </div>
           )}
 
-          <Dialog open={showAllParticipants} onOpenChange={setShowAllParticipants}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>All Participants</DialogTitle>
-              </DialogHeader>
-              <div className="max-h-72 overflow-y-auto space-y-1 mt-2">
-                {groupInfo?.participants?.map((p) => (
-                  <div
-                    key={typeof p.id === "object" ? p.id._serialized : p.id}
-                    className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 cursor-pointer"
-                  >
-                    <span
-                      className="font-mono text-xs text-gray-700"
-                      title={
-                        (typeof p.id === "object" ? p.id._serialized : p.id)
-                          .replace(/@c\.us$/, "")
-                      }
-                    >
-                      {p.name
-                        ? `${p.name} (${(typeof p.id === "object" ? p.id._serialized : p.id).replace(/@c\.us$/, "")})`
-                        : (typeof p.id === "object" ? p.id._serialized : p.id).replace(/@c\.us$/, "")}
-                    </span>
-                    {p.isSuperAdmin ? (
-                      <span title="Super Admin">👑</span>
-                    ) : p.isAdmin ? (
-                      <span title="Admin">⭐</span>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Confirm Delete Dialog */}
-          <ConfirmDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-            <ConfirmDialogContent className="max-w-xs">
-              <ConfirmDialogHeader>
-                <ConfirmDialogTitle>Are you sure?</ConfirmDialogTitle>
-              </ConfirmDialogHeader>
-              <div className="py-2 text-sm text-gray-700">
-                Do you really want to delete this message?
-              </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    setMsgIdToDelete(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="bg-red-500 hover:bg-red-600 text-white"
-                  onClick={() => handleDeleteMessage(msgIdToDelete)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </ConfirmDialogContent>
-          </ConfirmDialog>
+          {showAllParticipants && (
+  <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="absolute inset-0 bg-black opacity-50" onClick={() => setShowAllParticipants(false)}></div>
+    <div className="relative bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-lg z-10">
+      {/* Close button */}
+      <button
+        onClick={() => setShowAllParticipants(false)}
+        className="absolute top-2 right-2 p-1 hover:bg-gray-100 rounded-full transition"
+        title="Close"
+      >
+        <X className="w-4 h-4 text-gray-500" />
+      </button>
+      
+      <h3 className="text-lg font-semibold mb-4 text-gray-800">All Participants</h3>
+      <div className="max-h-72 overflow-y-auto space-y-1 mt-2">
+        {groupInfo?.participants?.map((p) => (
+          <div
+            key={typeof p.id === "object" ? p.id._serialized : p.id}
+            className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 cursor-pointer"
+          >
+            <span
+              className="font-mono text-xs text-gray-700"
+              title={
+                (typeof p.id === "object" ? p.id._serialized : p.id)
+                  .replace(/@c\.us$/, "")
+              }
+            >
+              {p.name
+                ? `${p.name} (${(typeof p.id === "object" ? p.id._serialized : p.id).replace(/@c\.us$/, "")})`
+                : (typeof p.id === "object" ? p.id._serialized : p.id).replace(/@c\.us$/, "")}
+            </span>
+            {p.isSuperAdmin ? (
+              <span title="Super Admin">👑</span>
+            ) : p.isAdmin ? (
+              <span title="Admin">⭐</span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end mt-4">
+        <Button
+          variant="outline"
+          onClick={() => setShowAllParticipants(false)}
+        >
+          Close
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
 
           {/* Group Action Form - Add/Remove Participants */}
           {groupInfo && (
-            <Dialog open={groupActionModal.open} onOpenChange={() => setGroupActionModal({ action: null, open: false })}>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>
-                    {groupActionModal.action === "add" && "Add Members"}
-                    {groupActionModal.action === "remove" && "Remove Members"}
-                    {groupActionModal.action === "promote" && "Make Admin"}
-                    {groupActionModal.action === "demote" && "Remove Admin"}
-                  </DialogTitle>
-                </DialogHeader>
-                <GroupActionForm
-                  action={groupActionModal.action}
-                  groupInfo={groupInfo}
-                  onClose={() => setGroupActionModal({ action: null, open: false })}
-                />
-              </DialogContent>
-            </Dialog>
+            groupActionModal.open && (
+  <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="absolute inset-0 bg-black opacity-50" onClick={safeCloseGroupModal}></div>
+    <div className="relative bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-lg z-10">
+      {/* Close button */}
+      <button
+        onClick={safeCloseGroupModal}
+        className="absolute top-2 right-2 p-1 hover:bg-gray-100 rounded-full transition"
+        title="Close"
+      >
+        <X className="w-4 h-4 text-gray-500" />
+      </button>
+      
+      <h3 className="text-lg font-semibold mb-4 text-gray-800">
+        {groupActionModal.action === "add" && "Add Members"}
+        {groupActionModal.action === "remove" && "Remove Members"}
+        {groupActionModal.action === "promote" && "Make Admin"}
+        {groupActionModal.action === "demote" && "Remove Admin"}
+      </h3>
+      <GroupActionForm
+        action={groupActionModal.action}
+        groupInfo={groupInfo}
+        onClose={safeCloseGroupModal}
+      />
+    </div>
+  </div>
+)
           )}
+
+          {/* Delete Confirmation Modal */}
+          {showDeleteConfirm && (
+  <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="absolute inset-0 bg-black opacity-50"></div>
+    <div className="relative bg-white dark:bg-gray-900 rounded-lg p-6 max-w-xs w-full mx-4 shadow-lg z-10">
+      {/* Close button */}
+      <button
+        onClick={() => {
+          setShowDeleteConfirm(false);
+          setMsgIdToDelete(null);
+        }}
+        className="absolute top-2 right-2 p-1 hover:bg-gray-100 rounded-full transition"
+        title="Close"
+      >
+        <X className="w-4 h-4 text-gray-500" />
+      </button>
+      
+      <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Are you sure?</h3>
+      <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+        Do you really want to delete this message?
+      </p>
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setShowDeleteConfirm(false);
+            setMsgIdToDelete(null);
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          className="bg-red-500 hover:bg-red-600 text-white"
+          onClick={() => handleDeleteMessage(msgIdToDelete)}
+        >
+          Delete
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
         </>
       )}
     </main>
