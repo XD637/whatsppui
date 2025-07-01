@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { Camera } from "lucide-react";
 
 export default function ChatWindow({ selectedChat }) {
   const [messages, setMessages] = useState([]);
@@ -43,6 +44,8 @@ export default function ChatWindow({ selectedChat }) {
   const prevMessagesLength = useRef(0);
   const [lastAction, setLastAction] = useState(null); // "add" | "delete" | null
   const [isAnyModalOpen, setIsAnyModalOpen] = useState(false); // Add this state variable
+  const [groupPictureFile, setGroupPictureFile] = useState(null);
+  const groupPictureInputRef = useRef();
 
   const base_api_url = process.env.NEXT_PUBLIC_BASE_API_URL;
   const base_api_port = process.env.NEXT_PUBLIC_BASE_API_PORT;
@@ -129,6 +132,30 @@ export default function ChatWindow({ selectedChat }) {
       setMediaFile(null);
     } else {
       setMediaFile(file);
+      toast.success(`Selected: ${file.name}`);
+    }
+  };
+
+  const handleGroupPictureChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please select an image file!");
+      e.target.value = null;
+      setGroupPictureFile(null);
+      return;
+    }
+    
+    // Validate file size (max 5MB for profile pictures)
+    const sizeInMB = file.size / (1024 * 1024);
+    if (sizeInMB > 5) {
+      toast.error("Image size exceeds 5MB limit!");
+      e.target.value = null;
+      setGroupPictureFile(null);
+    } else {
+      setGroupPictureFile(file);
       toast.success(`Selected: ${file.name}`);
     }
   };
@@ -335,6 +362,59 @@ export default function ChatWindow({ selectedChat }) {
     setIsAnyModalOpen(false);
   };
 
+  // Add a refresh function for group info:
+  const refreshGroupInfo = async () => {
+    if (selectedChat?.id && selectedChat?.id.endsWith("@g.us")) {
+      try {
+        const res = await fetch(
+          `${base_api_url}:${base_api_port}/api/group-info?groupId=${encodeURIComponent(
+            selectedChat.id
+          )}`
+        );
+        const data = await res.json();
+        if (data.success) setGroupInfo(data.group);
+      } catch (error) {
+        console.error("Failed to refresh group info:", error);
+      }
+    }
+  };
+
+  // Update your handleUpdateGroupPicture function:
+  const handleUpdateGroupPicture = async () => {
+    if (!groupPictureFile || !groupInfo) {
+      toast.error("Please select an image and ensure group is loaded!");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('groupId', groupInfo.id._serialized || groupInfo.id);
+    formData.append('image', groupPictureFile);
+
+    try {
+      const res = await fetch(`${base_api_url}:${base_api_port}/api/update-group-picture`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success("Group profile picture updated successfully!");
+        setGroupPictureFile(null);
+        if (groupPictureInputRef.current) {
+          groupPictureInputRef.current.value = null;
+        }
+        // Refresh group info after successful update
+        await refreshGroupInfo();
+      } else {
+        toast.error(data.error || "Failed to update group picture");
+      }
+    } catch (error) {
+      console.error("Error updating group picture:", error);
+      toast.error("Error updating group picture");
+    }
+  };
+
   return (
     <main className="w-[55%] p-4 bg-white flex flex-col justify-between border-r border-gray-300">
       <div className="text-lg font-bold border-b pb-6 mb-6 text-[#075E54] min-h-[40px] flex items-center justify-between">
@@ -376,6 +456,13 @@ export default function ChatWindow({ selectedChat }) {
       sideOffset={8}
       align="end"
     >
+      <DropdownMenuItem
+        className="px-4 py-2 hover:bg-[#f0f0f0] text-gray-800 cursor-pointer transition-colors"
+        onClick={() => groupPictureInputRef.current?.click()}
+      >
+        <Camera className="w-4 h-4 mr-2" />
+        Update Group Picture
+      </DropdownMenuItem>
       <DropdownMenuItem
         className="px-4 py-2 hover:bg-[#f0f0f0] text-gray-800 cursor-pointer transition-colors"
         onClick={() => safeOpenGroupModal("add")}
@@ -447,9 +534,27 @@ export default function ChatWindow({ selectedChat }) {
               <div className="flex flex-wrap gap-2 text-xs text-gray-700">
                 <span>
                   <span className="font-medium">Owner:</span>{" "}
-                  {typeof groupInfo.owner === "object"
-                    ? groupInfo.owner._serialized
-                    : groupInfo.owner}
+                  {(() => {
+                    // Find the owner in participants to get their name
+                    const ownerId = typeof groupInfo.owner === "object" 
+                      ? groupInfo.owner._serialized 
+                      : groupInfo.owner;
+                    
+                    const ownerParticipant = groupInfo.participants?.find(p => {
+                      const participantId = typeof p.id === "object" ? p.id._serialized : p.id;
+                      return participantId === ownerId;
+                    });
+                    
+                    // Show name if found, otherwise show the formatted phone number (same as participants)
+                    if (ownerParticipant?.name) {
+                      return ownerParticipant.name;
+                    } else {
+                      // Use the same format as participants - remove 91 prefix and @c.us suffix
+                      return ownerId.replace(/^91/, "").replace(/@c\.us$/, "");
+                    }
+                  })()}
+                  {/* Add crown emoji for owner like we do for admins */}
+                  <span className="ml-1" title="Owner">👑</span>
                 </span>
                 {groupInfo.createdAt && (
                   <span>
@@ -694,6 +799,13 @@ export default function ChatWindow({ selectedChat }) {
               accept="image/*,video/*,application/pdf"
               onChange={handleMediaChange}
             />
+            <input
+              type="file"
+              ref={groupPictureInputRef}
+              style={{ display: "none" }}
+              accept="image/*"
+              onChange={handleGroupPictureChange}
+            />
             <Input
               placeholder="Type a message..."
               className="rounded-full flex-1 min-h-[48px] text-base cursor-pointer"
@@ -728,6 +840,36 @@ export default function ChatWindow({ selectedChat }) {
                 title="Remove"
               >
                 ×
+              </Button>
+            </div>
+          )}
+
+          {groupPictureFile && (
+            <div className="mt-2 flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <Camera className="w-4 h-4 text-blue-600" />
+              <span className="text-xs text-blue-700 truncate flex-1">
+                Group Picture: {groupPictureFile.name}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setGroupPictureFile(null);
+                  if (groupPictureInputRef.current) {
+                    groupPictureInputRef.current.value = null;
+                  }
+                }}
+                className="text-blue-500 hover:text-blue-700 cursor-pointer"
+                title="Remove"
+              >
+                ×
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleUpdateGroupPicture}
+                className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1"
+              >
+                Update
               </Button>
             </div>
           )}
@@ -832,6 +974,7 @@ export default function ChatWindow({ selectedChat }) {
         action={groupActionModal.action}
         groupInfo={groupInfo}
         onClose={safeCloseGroupModal}
+        refresh={refreshGroupInfo} // Add this line
       />
     </div>
   </div>

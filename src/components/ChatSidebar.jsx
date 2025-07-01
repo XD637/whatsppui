@@ -17,16 +17,31 @@ export default function ChatSidebar({ onSelectChat, onIncomingMessage }) {
   var base_api_port = process.env.NEXT_PUBLIC_BASE_API_PORT;
   console.log("Base API URL:", base_api_url);
 
+  // Helper function to convert base64 profile pic to data URL
+  const getProfilePicUrl = (profilePic) => {
+    if (!profilePic || !profilePic.data || !profilePic.mimeType) {
+      console.log("No profile pic data:", profilePic); // Debug log
+      return null;
+    }
+    const dataUrl = `data:${profilePic.mimeType};base64,${profilePic.data}`;
+    console.log("Profile pic URL created:", dataUrl.substring(0, 50) + "..."); // Debug log
+    return dataUrl;
+  };
+
   const fetchChats = async () => {
     try {
       setLoading(true);
       const res = await fetch(`${base_api_url}:${base_api_port}/api/chat-list`);
       const data = await res.json();
+      console.log("Chat data received:", data); // Debug log
       if (data.success) {
         const enriched = data.chats.map((chat) => ({
           ...chat,
           unreadCount: 0,
+          // Convert profilePic to data URL if available
+          profilePicUrl: getProfilePicUrl(chat.profilePic),
         }));
+        console.log("Enriched chats:", enriched); // Debug log
         setChats(enriched);
       }
     } catch (err) {
@@ -41,16 +56,6 @@ export default function ChatSidebar({ onSelectChat, onIncomingMessage }) {
     const interval = setInterval(fetchChats, 1800000); // Fetch every 30 minutes
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    // Remove auto-select: do not select any chat on initial load
-    // if (chats.length > 0 && !selectedChatId) {
-    //   const first = chats[0];
-    //   setSelectedChatId(first.id);
-    //   selectedChatIdRef.current = first.id;
-    //   onSelectChat(first);
-    // }
-  }, [chats]);
 
   const handleSelectChat = (chat) => {
     setSelectedChatId(chat.id);
@@ -102,14 +107,12 @@ export default function ChatSidebar({ onSelectChat, onIncomingMessage }) {
             }
           });
 
-          // Notify ChatWindow if this chat is open
           if (selectedChatIdRef.current === chatId && onIncomingMessage) {
             onIncomingMessage(message || {
               id: msg.data.message_id,
               body,
               from,
               timestamp: new Date(timestamp).getTime(),
-              // ...other fields as needed...
             });
           }
         }
@@ -130,7 +133,7 @@ export default function ChatSidebar({ onSelectChat, onIncomingMessage }) {
   });
 
   const filteredChats = sortedChats
-    .filter((chat) => chat.id !== "status@broadcast") // <-- Hide WhatsApp Status
+    .filter((chat) => chat.id !== "status@broadcast")
     .filter((chat) => {
       const name = (chat.name || "").toLowerCase().trim();
       const searchTerm = search.toLowerCase().trim();
@@ -169,6 +172,9 @@ export default function ChatSidebar({ onSelectChat, onIncomingMessage }) {
           const isSelected = selectedChatId === chat.id;
           const previewMsg = chat.lastMessage?.body || "No messages yet";
           const previewTime = chat.lastMessage?.timestamp;
+          const hasProfilePic = chat.profilePicUrl && chat.profilePicUrl !== "";
+
+          console.log(`Chat ${chat.name}: hasProfilePic=${hasProfilePic}, profilePicUrl=${chat.profilePicUrl?.substring(0, 50)}...`); // Debug log
 
           return (
             <div
@@ -178,11 +184,50 @@ export default function ChatSidebar({ onSelectChat, onIncomingMessage }) {
                 isSelected ? "bg-[#D9FDD3]" : "hover:bg-[#f0f0f0]"
               }`}
             >
-              <div className="relative w-10 h-10 bg-[#cfd8dc] rounded-full flex items-center justify-center text-gray-700 font-semibold text-sm">
-                {chat.name?.[0]?.toUpperCase() || "?"}
+              <div className="relative w-10 h-10 flex-shrink-0">
+                {hasProfilePic ? (
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden bg-[#cfd8dc]">
+                    {/* Use regular img tag instead of Next.js Image */}
+                    <img
+                      src={chat.profilePicUrl}
+                      alt={chat.name || "Profile"}
+                      className="w-full h-full object-cover rounded-full"
+                      onError={(e) => {
+                        console.log("Image load error for chat:", chat.name);
+                        // Hide the image and show fallback
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.parentElement.querySelector('.fallback-initials');
+                        if (fallback) {
+                          fallback.style.display = 'flex';
+                        }
+                      }}
+                      onLoad={(e) => {
+                        console.log("Image loaded successfully for chat:", chat.name);
+                        // Hide fallback when image loads
+                        const fallback = e.currentTarget.parentElement.querySelector('.fallback-initials');
+                        if (fallback) {
+                          fallback.style.display = 'none';
+                        }
+                      }}
+                    />
+                    {/* Fallback initials */}
+                    <div 
+                      className="fallback-initials absolute inset-0 bg-[#cfd8dc] rounded-full flex items-center justify-center text-gray-700 font-semibold text-sm"
+                      style={{ display: 'none' }}
+                    >
+                      {chat.name?.[0]?.toUpperCase() || chat.id.replace(/^91/, "").replace(/@c\.us$/, "")[0] || "?"}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 bg-[#cfd8dc] rounded-full flex items-center justify-center text-gray-700 font-semibold text-sm">
+                    {chat.name?.[0]?.toUpperCase() || chat.id.replace(/^91/, "").replace(/@c\.us$/, "")[0] || "?"}
+                  </div>
+                )}
+                
+                {/* Unread count badge */}
                 {chat.unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#25D366] text-white text-[10px] px-[6px] py-[2px] rounded-full">
-                    {chat.unreadCount}
+                  <span className="absolute -top-1 -right-1 bg-[#25D366] text-white text-[10px] px-[6px] py-[2px] rounded-full min-w-[16px] h-4 flex items-center justify-center">
+                    {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
                   </span>
                 )}
               </div>
